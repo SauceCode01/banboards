@@ -6,6 +6,7 @@ import Navbar from "@/components/widgets/Navbar";
 import { ToastContainer } from "react-toastify";
 import WorkspaceSidebar from "@/components/features/workspace/WorkspaceSidebar";
 import { WorkspaceProvider } from "@/Providers/WorkspaceProvider";
+import { BoardProvider } from "@/Providers/BoardProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

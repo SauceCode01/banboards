@@ -90,9 +90,12 @@ export const BoardProvider = ({
   }, [activeWorkspaceId]);
 
   const createBoard = async (title: string) => {
+    console.log("active workspace id", activeWorkspaceId)
     if (!activeWorkspaceId || !title.trim()) return;
 
     setCreateBoardState("loading");
+
+    console.log("creating board...")
 
     const newBoardDTO: TablesInsert<"board"> = {
       title: title,
