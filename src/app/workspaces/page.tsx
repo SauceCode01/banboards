@@ -6,7 +6,7 @@ import WorkspaceCard from "@/components/widgets/workspaces/WorkspaceCard";
 const WorkspacesPage = () => {
   const { workspaces, workspacesState } = useWorkspaceContext();
 
-  if (workspacesState === "loading") {
+  if (workspacesState === "loading" || workspacesState==="initial") {
     return (
       <div className="flex items-center justify-center h-full">
         <p>Loading workspaces...</p>

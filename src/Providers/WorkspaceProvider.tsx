@@ -77,11 +77,18 @@ export const WorkspaceProvider = ({
 
   // defining states for mutations
   const [createWorkspaceState, setCreateWorkspaceState] =
-    useState<QueryState>("idle");
+    useState<QueryState>("initial");
   const [deleteWorkspaceState, setDeleteWorkspaceState] =
-    useState<QueryState>("idle");
+    useState<QueryState>("initial");
   const [updateWorkspaceState, setUpdateWorkspaceState] =
-    useState<QueryState>("idle");
+    useState<QueryState>("initial");
+
+  useEffect(() => {
+    // set initial states to idle
+    if (createWorkspaceState === "initial") setCreateWorkspaceState("idle");
+    if (deleteWorkspaceState === "initial") setDeleteWorkspaceState("idle");
+    if (updateWorkspaceState === "initial") setUpdateWorkspaceState("idle");
+  }, []);
 
   // fetching workspaces
   useEffect(() => {
@@ -91,7 +98,8 @@ export const WorkspaceProvider = ({
     const handleFetchWorkspaces = async () => {
       setWorkspacesState("loading");
 
-      dtoast("Fetching workspaces...");
+      if (workspaces.length > 0) setWorkspacesState("refetch");
+      else setWorkspacesState("loading");
 
       // Fetch workspaces of the user.
       // no need to filter due to RLS

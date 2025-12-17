@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Create if missing
       const { data: newProfile, error: createError } = await supabase
         .from("user_profile")
-        .insert([{ id: user.id, username: user.email!.split("@")[0] }])
+        .insert([{ id: user.id, username: user.email!.split("@")[0], email: user.email! }])
         .select()
         .single();
 

@@ -66,10 +66,9 @@ const BoardList = ({ workspaceId }: { workspaceId: string }) => {
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold">Boards</h2>
                 {userRole === 'owner' && (
-                    <a href={`/workspaces/${workspaceId}/settings`} className="p-2 bg-gray-600 text-white rounded">
-                        Settings
-                    </a>
-                )}
+                    <a href={`/workspaces/${workspaceId}/collaborators`} className="p-2 bg-gray-600 text-white rounded">
+                        Collaborators
+                    </a>                )}
             </div>
             <div className="mb-4">
                 <input 
