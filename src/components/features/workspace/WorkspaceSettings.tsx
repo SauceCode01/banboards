@@ -33,11 +33,23 @@ const WorkspaceSettings = ({ workspaceId }: { workspaceId: string }) => {
 
                 const { data: memberData, error: memberError } = await supabase
                     .from('workspace_member')
-                    .select('*, user_profile!inner(*)')
+                    .select('*')
                     .eq('workspace_id', workspaceId);
                 
                 if(memberData){
-                    setMembers(memberData as WorkspaceMemberWithProfile[]);
+                    const userIds = memberData.map(m => m.user_id);
+                    const { data: profilesData, error: profilesError } = await supabase
+                        .from('user_profile')
+                        .select('*')
+                        .in('id', userIds);
+
+                    if (profilesData) {
+                        const membersWithProfiles = memberData.map(member => {
+                            const profile = profilesData.find(p => p.id === member.user_id);
+                            return { ...member, user_profile: profile! };
+                        });
+                        setMembers(membersWithProfiles as WorkspaceMemberWithProfile[]);
+                    }
                 }
 
             } else {
@@ -76,11 +88,23 @@ const WorkspaceSettings = ({ workspaceId }: { workspaceId: string }) => {
                 // Refresh members list
                 const { data: memberData, error: memberError } = await supabase
                     .from('workspace_member')
-                    .select('*, user_profile!inner(*)')
+                    .select('*')
                     .eq('workspace_id', workspaceId);
                 
                 if(memberData){
-                    setMembers(memberData as WorkspaceMemberWithProfile[]);
+                    const userIds = memberData.map(m => m.user_id);
+                    const { data: profilesData, error: profilesError } = await supabase
+                        .from('user_profile')
+                        .select('*')
+                        .in('id', userIds);
+
+                    if (profilesData) {
+                        const membersWithProfiles = memberData.map(member => {
+                            const profile = profilesData.find(p => p.id === member.user_id);
+                            return { ...member, user_profile: profile! };
+                        });
+                        setMembers(membersWithProfiles as WorkspaceMemberWithProfile[]);
+                    }
                 }
                 setNewMemberEmail('');
             } else {

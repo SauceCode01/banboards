@@ -150,7 +150,15 @@ export type Database = {
           owner_id?: string
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workspace_owner_id_fkey1"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "user_profile"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workspace_member: {
         Row: {
@@ -175,6 +183,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workspace_member_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profile"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workspace_member_workspace_id_fkey"
             columns: ["workspace_id"]

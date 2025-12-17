@@ -13,14 +13,32 @@ const WorkspaceSidebar = () => {
     useEffect(() => {
         const fetchWorkspaces = async () => {
             if (!userProfile) return;
-            const { data, error } = await supabase
+
+            const { data: memberData, error: memberError } = await supabase
                 .from('workspace_member')
-                .select('*, workspace(*)')
+                .select('workspace_id')
                 .eq('user_id', userProfile.id);
+            
+            if (memberError || !memberData) {
+                setLoading(false);
+                return;
+            }
+
+            const workspaceIds = memberData.map(m => m.workspace_id);
+
+            if (workspaceIds.length === 0) {
+                setWorkspaces([]);
+                setLoading(false);
+                return;
+            }
+            
+            const { data, error } = await supabase
+                .from('workspace')
+                .select('*')
+                .in('id', workspaceIds);
 
             if (data) {
-                const workspaces = data.map(member => member.workspace).filter((ws): ws is Tables<'workspace'> => ws !== null);
-                setWorkspaces(workspaces);
+                setWorkspaces(data);
             }
             setLoading(false);
         };
