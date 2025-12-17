@@ -1,26 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false); 
- 
- 
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.signInWithPassword({
+    const { data: { session }, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -30,65 +26,80 @@ export default function Login() {
     if (error) {
       setError(error.message);
     } else if (session) {
-      console.log("logged in", session);
+      window.location.href = "/workspaces";
     }
   };
- 
 
   return (
-    <div className="flex justify-center items-center h-screen">
-      <form
-        onSubmit={handleLogin}
-        className="bg-gray-800 p-8 rounded-lg shadow-md w-96"
+    <div className="min-h-screen w-full bg-slate-950 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:32px_32px] flex items-center justify-center p-4 pt-24 md:pt-4">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md"
       >
-        <h2 className="text-2xl font-bold mb-6 text-white">Sign In</h2>
-        {error && (
-          <div className="bg-red-500 text-white p-3 rounded-lg mb-4">
-            {error}
-          </div>
-        )}
-        <div className="mb-4">
-          <label htmlFor="email" className="block text-gray-400 mb-2">
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-            disabled={loading}
-          />
+        <div className="bg-slate-900/50 backdrop-blur-lg border border-slate-800 rounded-2xl p-8 shadow-2xl shadow-indigo-500/10">
+          <h2 className="text-3xl font-bold text-center text-white mb-2">
+            Welcome Back
+          </h2>
+          <p className="text-center text-slate-400 mb-8">
+            Sign in to continue to your workspace.
+          </p>
+
+          {error && (
+            <div className="bg-red-500/20 border border-red-500 text-red-300 p-3 rounded-lg mb-6 text-center text-sm">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin}>
+            <div className="mb-4">
+              <label htmlFor="email" className="block text-slate-300 mb-2 text-sm font-medium">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-800/60 text-white rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+                required
+                disabled={loading}
+              />
+            </div>
+
+            <div className="mb-6">
+              <label htmlFor="password" className="block text-slate-300 mb-2 text-sm font-medium">
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-800/60 text-white rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+                required
+                disabled={loading}
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all duration-300 disabled:bg-slate-700 disabled:cursor-not-allowed"
+              disabled={loading}
+            >
+              {loading ? "Signing In..." : "Sign In"}
+            </button>
+          </form>
+          
+          <p className="text-center text-slate-400 mt-6">
+            Don't have an account?
+            <Link href="/auth/register" className="text-indigo-400 hover:text-indigo-300 font-medium ml-2 transition">
+              Register
+            </Link>
+          </p>
         </div>
-        <div className="mb-6">
-          <label htmlFor="password" className="block text-gray-400 mb-2">
-            Password
-          </label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-            disabled={loading}
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition duration-200 disabled:bg-gray-500"
-          disabled={loading}
-        >
-          {loading ? "Signing In..." : "Sign In"}
-        </button>
-        <p className="text-center text-gray-400 mt-4">
-          Don't have an account?{" "}
-          <Link href="/auth/register" className="text-blue-500 hover:underline">
-            Register
-          </Link>
-        </p>
-      </form>
+      </motion.div>
     </div>
   );
 }
