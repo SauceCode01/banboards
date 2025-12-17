@@ -1,19 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useAuthContext } from "@/Providers/AuthProvider";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+
+  const { authState } = useAuthContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (authState === 'authenticated') {
+      router.push("/workspaces");
+    }
+  }, [authState, router]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
+    setFormLoading(true);
     setError(null);
 
     const { data: { session }, error } = await supabase.auth.signInWithPassword({
@@ -21,14 +33,22 @@ export default function Login() {
       password,
     });
 
-    setLoading(false);
+    setFormLoading(false);
 
     if (error) {
       setError(error.message);
     } else if (session) {
-      window.location.href = "/workspaces";
+      router.push("/workspaces");
     }
   };
+
+  if (authState !== 'unauthenticated') {
+    return (
+        <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
+        </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-slate-950 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:32px_32px] flex items-center justify-center p-4 pt-24 md:pt-4">
@@ -64,7 +84,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-800/60 text-white rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
                 required
-                disabled={loading}
+                disabled={formLoading}
               />
             </div>
 
@@ -79,16 +99,16 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-800/60 text-white rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
                 required
-                disabled={loading}
+                disabled={formLoading}
               />
             </div>
 
             <button
               type="submit"
               className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all duration-300 disabled:bg-slate-700 disabled:cursor-not-allowed"
-              disabled={loading}
+              disabled={formLoading}
             >
-              {loading ? "Signing In..." : "Sign In"}
+              {formLoading ? "Signing In..." : "Sign In"}
             </button>
           </form>
           
