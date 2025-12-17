@@ -1,11 +1,25 @@
 "use client";
-import BoardList from '@/components/features/board/BoardList';
-import React from 'react'
+import BoardList from "@/components/features/board/BoardList";
+import React, { useEffect } from "react";
 
-const WorkspacePage = ({ params }: { params: { workspaceId: string } }) => {
-  return (
-    <BoardList workspaceId={params.workspaceId} />
-  )
-}
+const WorkspacePage = ({
+  params,
+}: {
+  params: Promise<{ workspaceId: string }>;
+}) => {
+  const [workspaceId, setWorkspaceId] = React.useState("");
 
-export default WorkspacePage
+  useEffect(() => {
+    params.then((data) => {
+      setWorkspaceId(data.workspaceId);
+    });
+  }, [params]);
+
+  if (!workspaceId) {
+    return <div>Loading...</div>;
+  }
+
+  return <BoardList workspaceId={ workspaceId} />;
+};
+
+export default WorkspacePage;

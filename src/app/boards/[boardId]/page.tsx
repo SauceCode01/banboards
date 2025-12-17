@@ -1,11 +1,21 @@
 "use client";
-import BoardView from '@/components/features/board/BoardView';
-import React from 'react'
+import BoardView from "@/components/features/board/BoardView";
+import React, { useEffect } from "react";
 
-const BoardPage = ({ params }: { params: { boardId: string } }) => {
-  return (
-    <BoardView boardId={params.boardId} />
-  )
-}
+const BoardPage = ({ params }: { params: Promise<{ boardId: string }> }) => {
+  const [boardId, setBoardId] = React.useState("");
 
-export default BoardPage
+  useEffect(() => {
+    params.then((data) => {
+      setBoardId(data.boardId);
+    });
+  }, [params]);
+
+  if (!boardId) {
+    return <div>Loading...</div>;
+  }
+
+  return <BoardView boardId={boardId} />;
+};
+
+export default BoardPage;

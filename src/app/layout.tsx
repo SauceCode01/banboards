@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/Providers/AuthProvider";
 import Navbar from "@/components/widgets/Navbar";
 import { ToastContainer } from "react-toastify";
+import WorkspaceSidebar from "@/components/features/workspace/WorkspaceSidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,13 +32,15 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          {/* navbar */}
-          <Navbar />
-
-          {/* content */}
-          {children}
-
-          {/* overlays */}
+          <>
+            <div className="flex flex-col w-full h-screen">
+              <Navbar />
+              <main className="flex h-screen">
+                <WorkspaceSidebar />
+                <div className="flex-1 p-4">{children}</div>
+              </main>
+            </div>
+          </>
           <ToastContainer />
         </AuthProvider>
       </body>

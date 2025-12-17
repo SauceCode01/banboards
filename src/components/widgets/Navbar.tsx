@@ -7,7 +7,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const Navbar = () => {
-  const {userProfile, session} = useAuthContext();
+  const { session, userProfile} = useAuthContext();
+
+  useEffect(() => {
+    console.log(session, userProfile, "this is from the navbar");
+
+  }, [session, userProfile]);
 
   return (
     <nav className="bg-gray-800 p-4">
@@ -17,7 +22,7 @@ const Navbar = () => {
         </Link>
         {userProfile && (
           <div className="text-white">
-            Signed in as: <span className="font-bold">{userProfile.username}</span>
+            Signed in as: <span className="font-bold">{userProfile?.username}</span>
           </div>
         )}
         <div className="space-x-4">

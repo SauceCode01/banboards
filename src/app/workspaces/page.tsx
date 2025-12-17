@@ -1,40 +1,37 @@
 "use client";
 
-import NewWorkspaceForm from "@/components/widgets/WorkspaceForm";
 import { supabase } from "@/lib/supabase/supabaseClient";
-import { Tables } from "@/types/database.types";
-import React, { useEffect, useState } from "react";
+import { useAuthContext } from "@/Providers/AuthProvider";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
-const WorkSpacesPage = () => {
-  const [workspaces, setWorkspaces] = useState<Tables<"workspace">[]>([]);
+const WorkspacesPage = () => {
+    const { userProfile } = useAuthContext();
+    const router = useRouter();
 
-  const handleGetAllWorkspaces = async () => {
-    const { data, error } = await supabase.from("workspace").select("*, user_profile!inner(*)");
-    if (error) {
-      console.error("Error fetching workspaces:", error.message);
-    } else {
-      console.log("Workspaces:", data);
-      setWorkspaces(data);
-    }
-  };
+    useEffect(() => {
+        if (!userProfile) return;
 
-  useEffect(() => {
-    handleGetAllWorkspaces();
-  }, []);
+        const fetchWorkspacesAndRedirect = async () => {
+            const { data: memberData, error: memberError } = await supabase
+                .from('workspace_member')
+                .select('workspace_id')
+                .eq('user_id', userProfile.id);
 
-  return (
-    <>
-      <div>WorkSpacesPage</div>
+            if (memberData && memberData.length > 0) {
+                // Redirect to the first workspace
+                router.push(`/workspaces/${memberData[0].workspace_id}`);
+            }
+        };
 
-      <NewWorkspaceForm/>
+        fetchWorkspacesAndRedirect();
+    }, [userProfile, router]);
 
-      <h1/>
-
-      {workspaces.map((workspace) => (
-        <div key={workspace.id} className="border-2 p-2">{workspace.title}</div>
-      ))}
-    </>
-  );
+    return (
+        <div className="flex items-center justify-center h-full">
+            <p>You are not a member of any workspace. Create one from the sidebar.</p>
+        </div>
+    );
 };
 
-export default WorkSpacesPage;
+export default WorkspacesPage;

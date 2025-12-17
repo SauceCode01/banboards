@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase/supabaseClient";
 import { Tables } from "@/types/database.types";
 import { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
+import { toast } from "react-toastify";
 
 export type AuthContextType = {
   session: Session | null;
@@ -31,61 +32,52 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session || null);
     });
+  }, []);
 
-    // set up auth listener
+  useEffect(() => {
     const { data: authStateListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!session) {
-          setSession(null);
+      async (event, currentSession) => {
+        setSession(currentSession);
+
+        if (currentSession) {
+          // Run the profile logic only if we have a session
+          // Using a separate function or ensuring this doesn't block the listener
+          fetchOrCreateProfile(currentSession.user);
+        } else {
           setUserProfile(null);
-          return;
-        }
-
-        setSession(session);
-        // setting user profile
-        let userProfile: null | Tables<"user_profile"> = null;
-
-        // check if profile exists
-        const { data: existingProfile, error } = await supabase
-          .from("user_profile")
-          .select("*")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        if (existingProfile) {
-          userProfile = existingProfile;
-        }
-
-        // if no profile, create one
-        if (!userProfile) {
-          const { data: newProfile, error: newProfileError } = await supabase
-            .from("user_profile")
-            .insert([
-              {
-                id: session.user.id,
-                username: session.user.email!.split("@")[0],
-              },
-            ])
-            .select()
-            .maybeSingle();
-
-          if (newProfile) {
-            userProfile = newProfile;
-          }
-        }
-
-        // set userProfile state
-        if (userProfile) {
-          setUserProfile(userProfile);
         }
       }
     );
 
-    // unsubscribe auth listener on unmount
-    return () => {
-      authStateListener?.subscription.unsubscribe();
-    };
+    return () => authStateListener.subscription.unsubscribe();
   }, []);
+
+  // Separate the logic to keep the listener clean
+  const fetchOrCreateProfile = async (user: any) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from("user_profile")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profile) {
+        setUserProfile(profile);
+        return;
+      }
+
+      // Create if missing
+      const { data: newProfile, error: createError } = await supabase
+        .from("user_profile")
+        .insert([{ id: user.id, username: user.email!.split("@")[0] }])
+        .select()
+        .single();
+
+      if (newProfile) setUserProfile(newProfile);
+    } catch (err) {
+      console.error("Profile sync error:", err);
+    }
+  };
 
   return (
     <AuthContext.Provider value={{ session, userProfile }}>
