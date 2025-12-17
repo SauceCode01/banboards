@@ -1,6 +1,8 @@
 "use client";
 import { supabase } from "@/lib/supabase/supabaseClient";
+import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/Providers/AuthProvider";
+import { useWorkspaceContext } from "@/Providers/WorkspaceProvider";
 import { Tables, TablesInsert } from "@/types/database.types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,87 +12,23 @@ import { toast } from "react-toastify";
 const WorkspaceSidebar = () => {
   const { userProfile } = useAuthContext();
   const router = useRouter();
-  const [workspaces, setWorkspaces] = useState<Tables<"workspace">[]>([]);
   const [newWorkspaceTitle, setNewWorkspaceTitle] = useState("");
-  const [loadingWorkspaces, setLoadingWorkspaces] = useState(true);
-  const [loadingCreateWorkspace, setLoadingCreateWorkspace] = useState(false);
 
-  useEffect(() => {
-    const fetchWorkspaces = async () => {
-      // ensure there is a user
-      if (!userProfile) return;
-
-      setLoadingWorkspaces(true);
-      toast.info("Fetching workspaces...");
-
-      // Fetch workspaces where the joined workspace_member table
-      // has a record matching the userProfile.id
-      const { data, error } = await supabase
-        .from("workspace")
-        .select("*, workspace_member!inner(user_id)")
-        .eq("workspace_member.user_id", userProfile.id);
-
-      if (error) {
-        toast.error(`Error fetching workspaces: ${error.message}`);
-        setWorkspaces([]);
-      } else if (data) {
-        toast.success(`Fetched ${data.length} workspaces`);
-        setWorkspaces(data);
-      }
-      setLoadingWorkspaces(false);
-    };
-
-    fetchWorkspaces();
-  }, [userProfile]);
+  const {
+    workspaceId,
+    setWorkspaceId,
+    workspaces,
+    setWorkspaces,
+    loadingWorkspaces,
+    createNewWorkspace,
+    loadingCreateWorkspace,
+  } = useWorkspaceContext();
 
   const handleCreateWorkspace = async () => {
-    // ensure there is a user
-    // ensure there is a title
-    if (!userProfile || !newWorkspaceTitle.trim()) return;
+    const newWorkspace = await createNewWorkspace(newWorkspaceTitle);
 
-    setLoadingCreateWorkspace(true);
-
-    // create the new workspace
-    const newWorkspaceDTO: TablesInsert<"workspace"> = {
-      title: newWorkspaceTitle,
-      owner_id: userProfile.id,
-    };
-
-    // post it on db and query it
-    const { data: newWorkspace, error: createError } = await supabase
-      .from("workspace")
-      .insert(newWorkspaceDTO)
-      .select()
-      .single();
-
-    if (createError || !newWorkspace) {
-      toast.error(`Error creating workspace: ${createError?.message}`);
-      return;
-    }
-
-    // add the new workspace member
-    const newMemberDTO: TablesInsert<"workspace_member"> = {
-      workspace_id: newWorkspace.id,
-      user_id: userProfile.id,
-      role: "owner",
-    };
-
-    const { error: memberError } = await supabase
-      .from("workspace_member")
-      .insert(newMemberDTO);
-
-    if (memberError) {
-      toast.error(`Error creating workspace member: ${memberError.message}`);
-      // roll back workspace creation
-      await supabase.from("workspace").delete().eq("id", newWorkspace.id);
-
-      return;
-    }
-
-    setWorkspaces((prevWorkspaces) => [...prevWorkspaces, newWorkspace]);
+    if (!newWorkspace) return;
     setNewWorkspaceTitle("");
-    setLoadingCreateWorkspace(false);
-    toast.success("Workspace created successfully");
     router.push(`/workspaces/${newWorkspace.id}`);
   };
 
@@ -100,10 +38,13 @@ const WorkspaceSidebar = () => {
       {loadingWorkspaces && <p>Loading...</p>}
       <ul>
         {workspaces.map((workspace) => (
-          <li key={workspace.id} className="mb-2">
+          <li key={workspace.id} className="mb-2 w-full">
             <Link
               href={`/workspaces/${workspace.id}`}
-              className="hover:text-gray-300"
+              className={cn(
+                "hover:text-gray-300 w-full block",
+                workspaceId === workspace.id && "text-gray-300 bg-gray-600"
+              )}
             >
               {workspace.title}
             </Link>
