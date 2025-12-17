@@ -2,7 +2,6 @@
 
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { Tables, TablesInsert } from "@/types/database.types";
-import { Session } from "@supabase/supabase-js";
 import {
   createContext,
   Dispatch,
@@ -11,160 +10,175 @@ import {
   useEffect,
   useState,
 } from "react";
-import { toast } from "react-toastify";
-import { useAuthContext } from "./AuthProvider";
-import { QueryState } from "@/types/query.types";
 import { dtoast } from "@/lib/utils";
+import { QueryState } from "@/types/query.types";
+import { useWorkspaceContext } from "./WorkspaceProvider";
 
-type CreateWorkspaceType = (
+type CreateBoardType = (
   title: string
-) => Promise<Tables<"workspace"> | undefined>;
+) => Promise<Tables<"board"> | undefined>;
 
-/**
- * defining the type of the context
- */
-export type WorkspaceContextType = {
-  activeWorkspaceId?: string;
-  setAcctiveWorkspaceId: Dispatch<SetStateAction<string | undefined>>;
+export type BoardContextType = {
+  activeBoardId?: string;
+  setActiveBoardId: Dispatch<SetStateAction<string | undefined>>;
 
-  workspaces: Tables<"workspace">[];
-  setWorkspaces: Dispatch<SetStateAction<Tables<"workspace">[]>>;
-  workspacesState: QueryState;
+  boards: Tables<"board">[];
+  setBoards: Dispatch<SetStateAction<Tables<"board">[]>>;
+  boardsState: QueryState;
 
-  createWorkspace: CreateWorkspaceType;
-  createWorkspaceState: QueryState;
+  createBoard: CreateBoardType;
+  createBoardState: QueryState;
+
+  deleteBoard: (boardId: string) => Promise<void>;
+  deleteBoardState: QueryState;
+
+  updateBoard: (boardId: string, newTitle: string) => Promise<void>;
+  updateBoardState: QueryState;
 };
 
-/**
- * creating the context
- */
-const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
+const BoardContext = createContext<BoardContextType | null>(null);
 
-/**
- * creating a hook to use the context
- */
-export const useWorkspaceContext = () => {
-  const context = useContext(WorkspaceContext);
+export const useBoardContext = () => {
+  const context = useContext(BoardContext);
   if (!context) {
-    throw new Error("useAuthContext must be used within an AuthProvider");
+    throw new Error("useBoardContext must be used within a BoardProvider");
   }
   return context;
 };
 
-/**
- * creating the context provider to wrap the app
- */
-export const WorkspaceProvider = ({
+export const BoardProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
-  // using the auth context to detect the current user
-  const { userProfile } = useAuthContext();
+  const { activeWorkspaceId } = useWorkspaceContext();
 
-  // defining workspaces states
-  const [activeWorkspaceId, setAcctiveWorkspaceId] = useState<
-    string | undefined
-  >(undefined);
-  const [workspaces, setWorkspaces] = useState<Tables<"workspace">[]>([]);
-  const [workspacesState, setWorkspacesState] = useState<QueryState>("idle");
+  const [activeBoardId, setActiveBoardId] = useState<string | undefined>(undefined);
+  const [boards, setBoards] = useState<Tables<"board">[]>([]);
+  const [boardsState, setBoardsState] = useState<QueryState>("idle");
 
-  // defining states for mutations
-  const [createWorkspaceState, setCreateWorkspaceState] =
-    useState<QueryState>("idle");
+  const [createBoardState, setCreateBoardState] = useState<QueryState>("idle");
+  const [deleteBoardState, setDeleteBoardState] = useState<QueryState>("idle");
+  const [updateBoardState, setUpdateBoardState] = useState<QueryState>("idle");
 
-  const handleFetchWorkspaces = async () => {
-    // ensure there is a user
-    if (!userProfile) return;
-
-    setWorkspacesState("loading");
-
-    dtoast("Fetching workspaces...");
-
-    // Fetch workspaces of the user. 
-    // no need to filter due to RLS
-    const { data, error } = await supabase.from("workspace").select("* ");
-
-    if (error) {
-      dtoast(`Error fetching workspaces: ${error.message}`, "error");
-      setWorkspaces([]);
-    } else if (data) {
-      dtoast(`Fetched ${data.length} workspaces`);
-      setWorkspaces(data);
+  useEffect(() => {
+    if (!activeWorkspaceId) {
+      setBoards([]);
+      return;
     }
-    setWorkspacesState("idle");
-  };
 
-  useEffect(() => { 
-    handleFetchWorkspaces();
-  }, [userProfile]);
+    const fetchBoards = async () => {
+      setBoardsState("loading");
+      dtoast("Fetching boards...");
 
-  const createWorkspace = async (title: string) => {
-    // ensure there is a user
-    // ensure there is a title
-    if (!userProfile || !title.trim()) return;
+      const { data, error } = await supabase
+        .from("board")
+        .select("*")
+        .eq("workspace_id", activeWorkspaceId);
 
-    setCreateWorkspaceState("loading");
-
-    // create the new workspace
-    const newWorkspaceDTO: TablesInsert<"workspace"> = {
-      title: title,
-      owner_id: userProfile.id,
+      if (error) {
+        dtoast(`Error fetching boards: ${error.message}`, "error");
+        setBoards([]);
+      } else if (data) {
+        dtoast(`Fetched ${data.length} boards`);
+        setBoards(data);
+      }
+      setBoardsState("idle");
     };
 
-    // post it on db and query it
-    const { data: newWorkspace, error: createError } = await supabase
-      .from("workspace")
-      .insert(newWorkspaceDTO)
+    fetchBoards();
+  }, [activeWorkspaceId]);
+
+  const createBoard = async (title: string) => {
+    if (!activeWorkspaceId || !title.trim()) return;
+
+    setCreateBoardState("loading");
+
+    const newBoardDTO: TablesInsert<"board"> = {
+      title: title,
+      workspace_id: activeWorkspaceId,
+    };
+
+    const { data: newBoard, error } = await supabase
+      .from("board")
+      .insert(newBoardDTO)
       .select()
       .single();
 
-    if (createError || !newWorkspace) {
-      dtoast(`Error creating workspace: ${createError?.message}`, "error");
+    if (error || !newBoard) {
+      dtoast(`Error creating board: ${error?.message}`, "error");
+      setCreateBoardState("idle");
       return;
     }
 
-    // add the new workspace member
-    const newMemberDTO: TablesInsert<"workspace_member"> = {
-      workspace_id: newWorkspace.id,
-      user_id: userProfile.id,
-      role: "owner",
-    };
+    setBoards((prevBoards) => [...prevBoards, newBoard]);
+    setCreateBoardState("idle");
+    dtoast("Board created successfully");
 
-    const { error: memberError } = await supabase
-      .from("workspace_member")
-      .insert(newMemberDTO);
+    return newBoard;
+  };
 
-    if (memberError) {
-      dtoast(`Error creating workspace member: ${memberError.message}`, "error");
-      // roll back workspace creation
-      await supabase.from("workspace").delete().eq("id", newWorkspace.id);
+  const deleteBoard = async (boardId: string) => {
+    setDeleteBoardState("loading");
+    dtoast("Deleting board...");
 
-      return;
+    const { error } = await supabase
+      .from("board")
+      .delete()
+      .eq("id", boardId);
+
+    if (error) {
+      dtoast(`Error deleting board: ${error.message}`, "error");
+    } else {
+      setBoards((prev) => prev.filter((b) => b.id !== boardId));
+      dtoast("Board deleted successfully");
     }
+    setDeleteBoardState("idle");
+  };
 
-    setWorkspaces((prevWorkspaces) => [...prevWorkspaces, newWorkspace]);
-    setCreateWorkspaceState("idle");
-    dtoast("Workspace created successfully");
+  const updateBoard = async (boardId: string, newTitle: string) => {
+    setUpdateBoardState("loading");
+    dtoast("Updating board...");
 
-    return newWorkspace;
+    const { data, error } = await supabase
+      .from("board")
+      .update({ title: newTitle })
+      .eq("id", boardId)
+      .select()
+      .single();
+
+    if (error || !data) {
+      dtoast(`Error updating board: ${error?.message}`, "error");
+    } else {
+      setBoards((prev) =>
+        prev.map((b) => (b.id === boardId ? data : b))
+      );
+      dtoast("Board updated successfully");
+    }
+    setUpdateBoardState("idle");
   };
 
   const value = {
-    activeWorkspaceId,  
-    setAcctiveWorkspaceId, 
+    activeBoardId,
+    setActiveBoardId,
 
-    workspaces,
-    setWorkspaces,
-    workspacesState,
+    boards,
+    setBoards,
+    boardsState,
 
-    createWorkspace,
-    createWorkspaceState,
+    createBoard,
+    createBoardState,
+
+    deleteBoard,
+    deleteBoardState,
+
+    updateBoard,
+    updateBoardState,
   };
 
   return (
-    <WorkspaceContext.Provider value={value}>
+    <BoardContext.Provider value={value}>
       {children}
-    </WorkspaceContext.Provider>
+    </BoardContext.Provider>
   );
 };

@@ -34,15 +34,16 @@ export default function RootLayout({
       >
         <AuthProvider>
           <WorkspaceProvider>
-            <div className="flex flex-col w-full h-screen">
-              <Navbar />
-              <main className="flex h-screen">
-                <WorkspaceSidebar />
-                <div className="flex-1 p-4">{children}</div>
-              </main>
-            </div>
-          </WorkspaceProvider>
-        </AuthProvider>
+              <BoardProvider>
+                  <div className="flex flex-col w-full h-screen">
+                      <Navbar />
+                      <main className="flex h-screen">
+                          <WorkspaceSidebar />
+                          <div className="flex-1 p-4">{children}</div>
+                      </main>
+                  </div>
+              </BoardProvider>
+          </WorkspaceProvider>        </AuthProvider>
         <ToastContainer />
       </body>
     </html>
