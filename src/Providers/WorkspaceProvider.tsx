@@ -33,6 +33,12 @@ export type WorkspaceContextType = {
 
   createWorkspace: CreateWorkspaceType;
   createWorkspaceState: QueryState;
+
+  deleteWorkspace: (workspaceId: string) => Promise<void>;
+  deleteWorkspaceState: QueryState;
+
+  updateWorkspace: (workspaceId: string, newTitle: string) => Promise<void>;
+  updateWorkspaceState: QueryState;
 };
 
 /**
@@ -71,6 +77,10 @@ export const WorkspaceProvider = ({
 
   // defining states for mutations
   const [createWorkspaceState, setCreateWorkspaceState] =
+    useState<QueryState>("idle");
+  const [deleteWorkspaceState, setDeleteWorkspaceState] =
+    useState<QueryState>("idle");
+  const [updateWorkspaceState, setUpdateWorkspaceState] =
     useState<QueryState>("idle");
 
   // fetching workspaces
@@ -155,6 +165,46 @@ export const WorkspaceProvider = ({
     return newWorkspace;
   };
 
+  const deleteWorkspace = async (workspaceId: string) => {
+    setDeleteWorkspaceState("loading");
+    dtoast("Deleting workspace...");
+
+    const { error } = await supabase
+      .from("workspace")
+      .delete()
+      .eq("id", workspaceId);
+
+    if (error) {
+      dtoast(`Error deleting workspace: ${error.message}`, "error");
+    } else {
+      setWorkspaces((prev) => prev.filter((w) => w.id !== workspaceId));
+      dtoast("Workspace deleted successfully");
+    }
+    setDeleteWorkspaceState("idle");
+  };
+
+  const updateWorkspace = async (workspaceId: string, newTitle: string) => {
+    setUpdateWorkspaceState("loading");
+    dtoast("Updating workspace...");
+
+    const { data, error } = await supabase
+      .from("workspace")
+      .update({ title: newTitle })
+      .eq("id", workspaceId)
+      .select()
+      .single();
+
+    if (error || !data) {
+      dtoast(`Error updating workspace: ${error?.message}`, "error");
+    } else {
+      setWorkspaces((prev) =>
+        prev.map((w) => (w.id === workspaceId ? data : w))
+      );
+      dtoast("Workspace updated successfully");
+    }
+    setUpdateWorkspaceState("idle");
+  };
+
   const value = {
     activeWorkspaceId,
     setAcctiveWorkspaceId,
@@ -165,6 +215,12 @@ export const WorkspaceProvider = ({
 
     createWorkspace,
     createWorkspaceState,
+
+    deleteWorkspace,
+    deleteWorkspaceState,
+
+    updateWorkspace,
+    updateWorkspaceState,
   };
 
   return (

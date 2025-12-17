@@ -12,7 +12,7 @@ export const dtoast = (
   type: "success" | "error" | "warning" | "info" = "info"
 ) => {
   toast[type](text, {
-    position: "top-right",
+    position: "bottom-right",
     autoClose: 5000,
     hideProgressBar: false,
     closeOnClick: true,
