@@ -1,9 +1,7 @@
-import React from 'react'
-
-const HomePage = () => {
+export default function Home() {
   return (
-    <div>HomePage</div>
-  )
+    <main className="flex h-screen items-center justify-center">
+      <p>Select a workspace to see the boards.</p>
+    </main>
+  );
 }
-
-export default HomePage
