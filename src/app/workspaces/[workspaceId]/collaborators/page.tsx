@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase/supabaseClient';
 import { useAuthContext } from '@/Providers/AuthProvider';
 import { Tables } from '@/types/database.types';
 import { useParams } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 
 type WorkspaceMemberWithProfile = Tables<'workspace_member'> & {
@@ -20,10 +20,34 @@ const CollaboratorsPage = () => {
     const [newMemberEmail, setNewMemberEmail] = useState('');
     const [newMemberRole, setNewMemberRole] = useState<Tables<'workspace_member'>['role']>('viewer');
 
+    const fetchMembers = useCallback(async () => {
+        if (!workspaceId) return;
+        const { data: memberData, error: memberError } = await supabase
+            .from('workspace_member')
+            .select('*, user_profile!inner(*)')
+            .eq('workspace_id', workspaceId);
+        
+        if(memberData){
+            const userIds = memberData.map(m => m.user_id);
+            const { data: profilesData, error: profilesError } = await supabase
+                .from('user_profile')
+                .select('*')
+                .in('id', userIds);
+
+            if (profilesData) {
+                const membersWithProfiles = memberData.map(member => {
+                    const profile = profilesData.find(p => p.id === member.user_id);
+                    return { ...member, user_profile: profile! };
+                });
+                setMembers(membersWithProfiles as WorkspaceMemberWithProfile[]);
+            }
+        }
+    }, [workspaceId]);
+
     useEffect(() => {
         const checkOwnershipAndFetchMembers = async () => {
             if (!userProfile || !workspaceId) return;
-
+            setLoading(true);
             const { data: ownerData, error: ownerError } = await supabase
                 .from('workspace')
                 .select('owner_id')
@@ -32,28 +56,7 @@ const CollaboratorsPage = () => {
 
             if (ownerData && ownerData.owner_id === userProfile.id) {
                 setIsOwner(true);
-
-                const { data: memberData, error: memberError } = await supabase
-                    .from('workspace_member')
-                    .select('*, user_profile!inner(*)')
-                    .eq('workspace_id', workspaceId);
-                
-                if(memberData){
-                    const userIds = memberData.map(m => m.user_id);
-                    const { data: profilesData, error: profilesError } = await supabase
-                        .from('user_profile')
-                        .select('*')
-                        .in('id', userIds);
-
-                    if (profilesData) {
-                        const membersWithProfiles = memberData.map(member => {
-                            const profile = profilesData.find(p => p.id === member.user_id);
-                            return { ...member, user_profile: profile! };
-                        });
-                        setMembers(membersWithProfiles as WorkspaceMemberWithProfile[]);
-                    }
-                }
-
+                await fetchMembers();
             } else {
                 setIsOwner(false);
             }
@@ -61,7 +64,7 @@ const CollaboratorsPage = () => {
         };
 
         checkOwnershipAndFetchMembers();
-    }, [workspaceId, userProfile]);
+    }, [workspaceId, userProfile, fetchMembers]);
 
     const handleInviteMember = async () => {
         if (!newMemberEmail.trim()) {
@@ -70,12 +73,10 @@ const CollaboratorsPage = () => {
         }
         if(!workspaceId) return;
 
-        const username = newMemberEmail.split('@')[0];
-
         const { data: profile, error: profileError } = await supabase
             .from('user_profile')
             .select('id')
-            .eq('username', username)
+            .eq('email', newMemberEmail)
             .single();
         
         if (profileError || !profile) {
@@ -101,28 +102,38 @@ const CollaboratorsPage = () => {
         }
 
         toast.success('Member added successfully');
-        // Refresh members list
-        const { data: memberData, error: memberError } = await supabase
-            .from('workspace_member')
-            .select('*, user_profile!inner(*)')
-            .eq('workspace_id', workspaceId);
-        
-        if(memberData){
-             const userIds = memberData.map(m => m.user_id);
-            const { data: profilesData, error: profilesError } = await supabase
-                .from('user_profile')
-                .select('*')
-                .in('id', userIds);
-
-            if (profilesData) {
-                const membersWithProfiles = memberData.map(member => {
-                    const profile = profilesData.find(p => p.id === member.user_id);
-                    return { ...member, user_profile: profile! };
-                });
-                setMembers(membersWithProfiles as WorkspaceMemberWithProfile[]);
-            }
-        }
+        await fetchMembers();
         setNewMemberEmail('');
+    }
+
+    const handleRemoveMember = async (memberId: string) => {
+        if (!window.confirm("Are you sure you want to remove this member?")) return;
+
+        const { error } = await supabase
+            .from('workspace_member')
+            .delete()
+            .eq('id', memberId);
+        
+        if (error) {
+            toast.error(error.message);
+        } else {
+            toast.success('Member removed');
+            await fetchMembers();
+        }
+    }
+
+    const handleUpdateRole = async (memberId: string, newRole: Tables<'workspace_member'>['role']) => {
+        const { error } = await supabase
+            .from('workspace_member')
+            .update({ role: newRole })
+            .eq('id', memberId);
+
+        if (error) {
+            toast.error(error.message);
+        } else {
+            toast.success('Role updated');
+            await fetchMembers();
+        }
     }
 
     if (loading) {
@@ -143,9 +154,30 @@ const CollaboratorsPage = () => {
                     {members.map(member => (
                         <li key={member.id} className="flex justify-between items-center mb-2 p-2 border rounded">
                             <span>{member.user_profile.username}</span>
-                            <span>{member.role}</span>
+                            <div className="flex items-center gap-2">
+                                {userProfile?.id === member.user_id ? (
+                                    <span className="text-gray-500">{member.role} (You)</span>
+                                ) : (
+                                    <>
+                                        <select
+                                            value={member.role}
+                                            onChange={(e) => handleUpdateRole(member.id, e.target.value as Tables<'workspace_member'>['role'])}
+                                            className="p-1 rounded bg-gray-200"
+                                        >
+                                            <option value="viewer">Viewer</option>
+                                            <option value="editor">Editor</option>
+                                        </select>
+                                        <button
+                                            onClick={() => handleRemoveMember(member.id)}
+                                            className="p-1 bg-red-500 text-white rounded text-sm"
+                                        >
+                                            Remove
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                         </li>
-))}
+                    ))}
                 </ul>
             </div>
 
