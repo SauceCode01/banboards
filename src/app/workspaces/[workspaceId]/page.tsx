@@ -12,7 +12,7 @@ const WorkspacePage = ({
   params: Promise<{ workspaceId: string }>;
 }) => {
   const { userProfile } = useAuthContext();
-  const { workspaceId, setWorkspaceId } = useWorkspaceContext();
+  const { activeWorkspaceId, setAcctiveWorkspaceId } = useWorkspaceContext();
   const [boards, setBoards] = useState<Tables<"board">[]>([]);
   const [loading, setLoading] = useState(true);
   const [newBoardTitle, setNewBoardTitle] = useState("");
@@ -28,10 +28,10 @@ const WorkspacePage = ({
       const { data: boardData, error: boardError } = await supabase
         .from("board")
         .select("*")
-        .eq("workspace_id", workspaceId);
+        .eq("workspace_id", activeWorkspaceId);
 
       if (boardData) {
-        console.log("boards fetched", boardData, workspaceId);
+        console.log("boards fetched", boardData, activeWorkspaceId);
         setBoards(boardData);
       }
       setLoading(false);
@@ -40,7 +40,7 @@ const WorkspacePage = ({
       const { data: memberData, error: memberError } = await supabase
         .from("workspace_member")
         .select("role")
-        .eq("workspace_id", workspaceId)
+        .eq("workspace_id", activeWorkspaceId)
         .eq("user_id", userProfile.id)
         .single();
 
@@ -50,7 +50,7 @@ const WorkspacePage = ({
     };
 
     fetchBoardsAndRole();
-  }, [workspaceId, userProfile]);
+  }, [activeWorkspaceId, userProfile]);
 
   const handleCreateBoard = async () => {
     if (!newBoardTitle.trim()) return;
@@ -59,7 +59,7 @@ const WorkspacePage = ({
       .from("board")
       .insert({
         title: newBoardTitle,
-        workspace_id: workspaceId,
+        workspace_id: activeWorkspaceId,
       })
       .select()
       .single();
@@ -72,11 +72,11 @@ const WorkspacePage = ({
   useEffect(() => {
     params.then((data) => {
       console.log("params changed", data)
-      setWorkspaceId(data.workspaceId);
+      setAcctiveWorkspaceId(data.workspaceId);
     });
   }, [params]);
 
-  if (!workspaceId) {
+  if (!activeWorkspaceId) {
     return <div>Loading...</div>;
   }
 
@@ -86,7 +86,7 @@ const WorkspacePage = ({
         <h2 className="text-2xl font-bold">Boards</h2>
         {userRole === "owner" && (
           <a
-            href={`/workspaces/${workspaceId}/settings`}
+            href={`/workspaces/${activeWorkspaceId}/settings`}
             className="p-2 bg-gray-600 text-white rounded"
           >
             Settings

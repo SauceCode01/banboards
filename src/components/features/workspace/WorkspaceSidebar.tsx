@@ -15,17 +15,17 @@ const WorkspaceSidebar = () => {
   const [newWorkspaceTitle, setNewWorkspaceTitle] = useState("");
 
   const {
-    workspaceId,
-    setWorkspaceId,
+    activeWorkspaceId,
+    setAcctiveWorkspaceId,
     workspaces,
     setWorkspaces,
     loadingWorkspaces,
-    createNewWorkspace,
+    createWorkspace,
     loadingCreateWorkspace,
   } = useWorkspaceContext();
 
   const handleCreateWorkspace = async () => {
-    const newWorkspace = await createNewWorkspace(newWorkspaceTitle);
+    const newWorkspace = await createWorkspace(newWorkspaceTitle);
 
     if (!newWorkspace) return;
     setNewWorkspaceTitle("");
@@ -43,7 +43,7 @@ const WorkspaceSidebar = () => {
               href={`/workspaces/${workspace.id}`}
               className={cn(
                 "hover:text-gray-300 w-full block",
-                workspaceId === workspace.id && "text-gray-300 bg-gray-600"
+                activeWorkspaceId === workspace.id && "text-gray-300 bg-gray-600"
               )}
             >
               {workspace.title}

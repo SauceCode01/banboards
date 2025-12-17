@@ -73,34 +73,32 @@ export const WorkspaceProvider = ({
   const [createWorkspaceState, setCreateWorkspaceState] =
     useState<QueryState>("idle");
 
-  // fetching workspaces
-  useEffect(() => {
+  const handleFetchWorkspaces = async () => {
     // ensure there is a user
     if (!userProfile) return;
 
-    const handleFetchWorkspaces = async () => {
-      setWorkspacesState("loading");
+    setWorkspacesState("loading");
 
-      dtoast("Fetching workspaces...");
+    dtoast("Fetching workspaces...");
 
-      // Fetch workspaces of the user.
-      // no need to filter due to RLS
-      const { data, error } = await supabase.from("workspace").select("* ");
+    // Fetch workspaces of the user. 
+    // no need to filter due to RLS
+    const { data, error } = await supabase.from("workspace").select("* ");
 
-      if (error) {
-        dtoast(`Error fetching workspaces: ${error.message}`, "error");
-        setWorkspaces([]);
-      } else if (data) {
-        dtoast(`Fetched ${data.length} workspaces`);
-        setWorkspaces(data);
-      }
-      setWorkspacesState("idle");
-    };
+    if (error) {
+      dtoast(`Error fetching workspaces: ${error.message}`, "error");
+      setWorkspaces([]);
+    } else if (data) {
+      dtoast(`Fetched ${data.length} workspaces`);
+      setWorkspaces(data);
+    }
+    setWorkspacesState("idle");
+  };
 
+  useEffect(() => { 
     handleFetchWorkspaces();
   }, [userProfile]);
 
-  // function to create a new workspace
   const createWorkspace = async (title: string) => {
     // ensure there is a user
     // ensure there is a title
@@ -138,10 +136,7 @@ export const WorkspaceProvider = ({
       .insert(newMemberDTO);
 
     if (memberError) {
-      dtoast(
-        `Error creating workspace member: ${memberError.message}`,
-        "error"
-      );
+      dtoast(`Error creating workspace member: ${memberError.message}`, "error");
       // roll back workspace creation
       await supabase.from("workspace").delete().eq("id", newWorkspace.id);
 
@@ -156,8 +151,8 @@ export const WorkspaceProvider = ({
   };
 
   const value = {
-    activeWorkspaceId,
-    setAcctiveWorkspaceId,
+    activeWorkspaceId,  
+    setAcctiveWorkspaceId, 
 
     workspaces,
     setWorkspaces,

@@ -1,32 +1,43 @@
 "use client";
 
-import { supabase } from "@/lib/supabase/supabaseClient";
-import { useAuthContext } from "@/Providers/AuthProvider";
 import { useWorkspaceContext } from "@/Providers/WorkspaceProvider";
-import { useRouter } from "next/navigation";
-import { use, useEffect } from "react";
+import WorkspaceCard from "@/components/widgets/workspaces/WorkspaceCard";
 
-/**
- * fetches all workspaces of the user
- * if there is a workspace,
- */
 const WorkspacesPage = () => {
-  const router = useRouter();
+  const { workspaces, workspacesState } = useWorkspaceContext();
 
-  const { workspaces } = useWorkspaceContext();
+  console.log("workspaces", workspaces, "workspacesState", workspacesState);
 
-  useEffect(() => {
-    if (!workspaces) return;
+  if (workspacesState === "loading" ) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p>Loading workspaces...</p>
+      </div>
+    );
+  }
 
-    if (workspaces && workspaces.length > 0) {
-      // Redirect to the first workspace
-      router.push(`/workspaces/${workspaces[0].id}`);
-    }
-  }, [workspaces]);
+  if (workspaces.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <p className="mb-4">You are not a member of any workspace.</p>
+        <a
+          href="/workspaces/new"
+          className="p-2 bg-blue-600 text-white rounded"
+        >
+          Create One
+        </a>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex items-center justify-center h-full">
-      <p>You are not a member of any workspace. Create one from the sidebar.</p>
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Your Workspaces</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {workspaces.map((workspace) => (
+          <WorkspaceCard workspace={workspace} key={workspace.id} />
+        ))}
+      </div>
     </div>
   );
 };
