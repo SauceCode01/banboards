@@ -20,10 +20,7 @@ const BoardSettings = ({ board, onClose }: BoardSettingsProps) => {
       (newTitle.trim() !== board.title ||
         newDescription.trim() !== (board.description || ""))
     ) {
-      await updateBoard(board.id, {
-        title: newTitle.trim(),
-        description: newDescription.trim(),
-      });
+      await updateBoard(board.id, newTitle.trim(), newDescription.trim());
       onClose();
     }
   };
@@ -83,9 +80,7 @@ const BoardSettings = ({ board, onClose }: BoardSettingsProps) => {
 
       <div className="my-6 border-t border-slate-800"></div>
 
-      <h3 className="text-lg font-semibold text-red-500 mb-2">
-        Danger Zone
-      </h3>
+      <h3 className="text-lg font-semibold text-red-500 mb-2">Danger Zone</h3>
       <p className="text-sm text-slate-400 mb-4">
         Deleting a board is permanent and cannot be undone.
       </p>

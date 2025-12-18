@@ -15,7 +15,7 @@ import { dtoast } from "@/lib/utils";
 import { QueryState } from "@/types/query.types";
 import { useWorkspaceContext } from "./WorkspaceProvider";
 
-type CreateBoardType = (title: string) => Promise<Tables<"board"> | undefined>;
+type CreateBoardType = (title: string, description?: string) => Promise<Tables<"board"> | undefined>;
 
 export type BoardContextType = {
   activeBoardId?: string;
@@ -32,7 +32,7 @@ export type BoardContextType = {
   deleteBoard: (boardId: string) => Promise<void>;
   deleteBoardState: QueryState;
 
-  updateBoard: (boardId: string, newTitle: string) => Promise<void>;
+  updateBoard: (boardId: string, newTitle: string, newDescription?: string) => Promise<void>;
   updateBoardState: QueryState;
 };
 
@@ -95,12 +95,13 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
     fetchBoards();
   }, [activeWorkspaceId]);
 
-  const createBoard = async (title: string) => {
+  const createBoard = async (title: string, description?: string) => {
     if (!activeWorkspaceId || !title.trim()) return;
     setCreateBoardState("loading");
 
     const newBoardDTO: TablesInsert<"board"> = {
       title,
+      description,
       workspace_id: activeWorkspaceId,
     };
 
@@ -142,12 +143,12 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
     setDeleteBoardState("idle");
   };
 
-  const updateBoard = async (boardId: string, newTitle: string) => {
+  const updateBoard = async (boardId: string, newTitle: string, newDescription?: string) => {
     setUpdateBoardState("loading");
     dtoast("Updating board...");
     const { data, error } = await supabase
       .from("board")
-      .update({ title: newTitle })
+      .update({ title: newTitle, description: newDescription })
       .eq("id", boardId)
       .select()
       .single();
