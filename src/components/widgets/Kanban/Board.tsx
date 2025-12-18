@@ -1,6 +1,18 @@
 "use client";
 import React, { useMemo, useState } from "react";
-import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, MouseSensor, TouchSensor, UniqueIdentifier, closestCorners, useSensor, useSensors, DragOverlay } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  MouseSensor,
+  TouchSensor,
+  UniqueIdentifier,
+  closestCorners,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { BoardList } from "./BoardList";
 import type { Ticket } from "./types";
@@ -10,14 +22,17 @@ import EditTicketModal from "./EditTicketModal";
 import { KanbanProvider, useKanban } from "@/Providers/KanbanProvider";
 
 const KanbanBoardInner: React.FC = () => {
-  const { lists, tickets, createTicket, updateTicketDetails, reorderTickets } = useKanban();
+  const { lists, tickets, createTicket, updateTicketDetails, reorderTickets } =
+    useKanban();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addListId, setAddListId] = useState<string | null>(null);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 },
+    })
   );
 
   const ticketsByList = useMemo(() => {
@@ -38,11 +53,23 @@ const KanbanBoardInner: React.FC = () => {
     setAddOpen(true);
   }
 
-  function submitAddTicket(values: { title: string; description: string; deadline: string }) {
+  function submitAddTicket(values: {
+    title: string;
+    description: string;
+    deadline: string;
+  }) {
     if (!addListId) return;
-    const listTickets = tickets.filter((t) => t.list_id === addListId).sort((a, b) => a.position - b.position);
+    const listTickets = tickets
+      .filter((t) => t.list_id === addListId)
+      .sort((a, b) => a.position - b.position);
     const nextPosition = listTickets.length;
-    void createTicket({ list_id: addListId, position: nextPosition, title: values.title, description: values.description, deadline: values.deadline || "" });
+    void createTicket({
+      list_id: addListId,
+      position: nextPosition,
+      title: values.title,
+      description: values.description,
+      deadline: values.deadline || "",
+    });
     setAddOpen(false);
     setAddListId(null);
   }
@@ -71,13 +98,28 @@ const KanbanBoardInner: React.FC = () => {
     if (!activeTicket) return;
 
     const overIsList = lists.some((l) => l.id === overId);
-    const targetListId = overIsList ? overId : tickets.find((t) => t.id === overId)?.list_id;
+
+    const targetListId = overIsList
+      ? overId
+      : tickets.find((t) => t.id === overId)?.list_id;
     if (!targetListId) return;
-    const listTickets = tickets.filter((t) => t.list_id === targetListId).sort((a, b) => a.position - b.position);
+
+    const listTickets = tickets
+      .filter((t) => t.list_id === targetListId)
+      .sort((a, b) => a.position - b.position);
+
     const currentlyInTarget = listTickets.find((t) => t.id === activeId);
-    const overIndex = overIsList ? listTickets.length : listTickets.findIndex((t) => t.id === overId);
-    const activeIndex = currentlyInTarget ? listTickets.findIndex((t) => t.id === activeId) : listTickets.length;
+
+    const overIndex = overIsList
+      ? listTickets.length
+      : listTickets.findIndex((t) => t.id === overId);
+
+    const activeIndex = currentlyInTarget
+      ? listTickets.findIndex((t) => t.id === activeId)
+      : listTickets.length;
+
     const newIndex = overIndex < 0 ? listTickets.length - 1 : overIndex;
+    
     void reorderTickets(activeId, targetListId, newIndex);
     setActiveId(null);
   }
@@ -87,30 +129,42 @@ const KanbanBoardInner: React.FC = () => {
 
   return (
     <div className="w-full h-full overflow-x-auto p-4">
-      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
         <div className="flex gap-4 min-w-max">
-          {lists.sort((a, b) => a.position - b.position).map((list) => (
-            <BoardList
-              key={list.id}
-              list={list}
-              tickets={(ticketsByList[list.id] || []).map((t) => ({ ...t }))}
-              onAddTicket={addTicket}
-              onDeleteTicket={() => {}}
-              onOpenTicket={(t) => setEditingTicket(t)}
-            />
-          ))}
+          {lists
+            .sort((a, b) => a.position - b.position)
+            .map((list) => (
+              <BoardList
+                key={list.id}
+                list={list}
+                tickets={(ticketsByList[list.id] || []).map((t) => ({ ...t }))}
+                onAddTicket={addTicket}
+                onDeleteTicket={() => {}}
+                onOpenTicket={(t) => setEditingTicket(t)}
+              />
+            ))}
         </div>
         <DragOverlay>
-          {activeId ? (
-            (() => {
-              const activeTicket = tickets.find((t) => t.id === activeId);
-              return activeTicket ? (
-                <div className="pointer-events-none opacity-100 shadow-xl ring-1 ring-slate-700 rounded-md" style={{ transform: "translateZ(0)" }}>
-                  <TicketContent ticket={activeTicket} />
-                </div>
-              ) : null;
-            })()
-          ) : null}
+          {activeId
+            ? (() => {
+                const activeTicket = tickets.find((t) => t.id === activeId);
+                return activeTicket ? (
+                  <div
+                    className="pointer-events-none opacity-100 shadow-xl ring-1 ring-slate-700 rounded-md"
+                    style={{ transform: "translateZ(0)" }}
+                  >
+                    <TicketContent ticket={activeTicket} />
+                  </div>
+                ) : null;
+              })()
+            : null}
         </DragOverlay>
       </DndContext>
       <AddTicketModal

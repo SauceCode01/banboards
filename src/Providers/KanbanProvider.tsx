@@ -242,12 +242,14 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     newListId: string,
     newPosition: number
   ) {
+    console.log("REORDER TICKETS", ticketId, newListId, newPosition);
     const current = tickets.map((t) => ({ ...t }));
     const moved = current.find((t) => t.id === ticketId);
     if (!moved) return;
     const sourceListId = moved.list_id;
     // Reorder within the same list
     if (sourceListId === newListId) {
+      console.log("REORDER WITHIN SAME LIST");
       const sameList = current
         .filter((t) => t.list_id === sourceListId && t.id !== ticketId)
         .sort((a, b) => a.position - b.position);
@@ -268,14 +270,19 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
         id: t.id,
         list_id: t.list_id,
         position: t.position,
+        title: t.title,
+        description: t.description || "", 
       }));
       const tempMove = !committedTickets.some((t) => t.id === ticketId);
       if (tempMove) return;
+      console.log("before DATABASE STUFF SAME LIST");
+      console.log(changed);
       try {
         const { error, data } = await supabase
           .from("ticket")
           .upsert(changed)
           .select();
+        console.log(error, data, "REORDERRRRRRR SAME LIST");
         if (error) throw error;
         const updated = (data || []) as Tables<"ticket">[];
         setCommittedTickets((prev) => {
@@ -328,9 +335,13 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       id: t.id,
       list_id: t.list_id,
       position: t.position,
+      title: t.title,
+      description: t.description || "",
     }));
     const tempMove = !committedTickets.some((t) => t.id === ticketId);
     if (tempMove) return;
+
+    console.log("before DATABASE STUFF")
 
     try {
       const { error, data } = await supabase

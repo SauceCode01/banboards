@@ -59,11 +59,11 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
   const [deleteBoardState, setDeleteBoardState] = useState<QueryState>("idle");
   const [updateBoardState, setUpdateBoardState] = useState<QueryState>("idle");
 
-  console.log(
-    "boards",
-    activeWorkspace,
-    boards.find((b) => b.id === activeBoardId)
-  );
+  // console.log(
+  //   "boards",
+  //   activeWorkspace,
+  //   boards.find((b) => b.id === activeBoardId)
+  // );
 
   useEffect(() => {
     if (!activeWorkspaceId) {
