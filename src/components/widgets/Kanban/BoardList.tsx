@@ -10,9 +10,10 @@ interface BoardListProps {
   tickets: Ticket[];
   onAddTicket: (listId: string) => void;
   onDeleteTicket: (id: string) => void;
+  onOpenTicket: (t: Ticket) => void;
 }
 
-export const BoardList: React.FC<BoardListProps> = ({ list, tickets, onAddTicket, onDeleteTicket }) => {
+export const BoardList: React.FC<BoardListProps> = ({ list, tickets, onAddTicket, onDeleteTicket, onOpenTicket }) => {
   const { setNodeRef, isOver } = useDroppable({ id: list.id, data: { type: "List", list } });
 
   return (
@@ -26,7 +27,7 @@ export const BoardList: React.FC<BoardListProps> = ({ list, tickets, onAddTicket
       <div ref={setNodeRef} className={`min-h-32 flex-1 overflow-y-auto rounded-b-md border border-t-0 border-slate-700 p-3 space-y-2 ${isOver ? "bg-slate-800/40" : "bg-slate-900/40"}`}>
         <SortableContext items={tickets.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tickets.map((ticket) => (
-            <TicketCard key={ticket.id} ticket={ticket} onDelete={onDeleteTicket} />
+            <TicketCard key={ticket.id} ticket={ticket} onDelete={onDeleteTicket} onOpen={onOpenTicket} />
           ))}
         </SortableContext>
         <button onClick={() => onAddTicket(list.id)} className="w-full mt-2 text-left text-xs text-slate-300 hover:text-white py-1 px-2 rounded bg-slate-800/50 hover:bg-slate-800 border border-slate-700">

@@ -6,6 +6,7 @@ import { BoardList } from "./BoardList";
 import type { List, Ticket } from "./types";
 import { TicketContent } from "./Ticket";
 import AddTicketModal from "./AddTicketModal";
+import EditTicketModal from "./EditTicketModal";
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
@@ -24,6 +25,7 @@ export const KanbanBoard: React.FC = () => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addListId, setAddListId] = useState<string | null>(null);
+  const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
@@ -193,6 +195,7 @@ export const KanbanBoard: React.FC = () => {
               tickets={(ticketsByList[list.id] || []).map((t) => ({ ...t }))}
               onAddTicket={addTicket}
               onDeleteTicket={deleteTicket}
+              onOpenTicket={(t) => setEditingTicket(t)}
             />
           ))}
         </div>
@@ -217,6 +220,13 @@ export const KanbanBoard: React.FC = () => {
         }}
         listName={lists.find((l) => l.id === addListId)?.title}
         onSubmit={submitAddTicket}
+      />
+      <EditTicketModal
+        ticket={editingTicket}
+        onClose={() => setEditingTicket(null)}
+        onSave={(values) => {
+          setTickets((prev) => prev.map((t) => (t.id === editingTicket?.id ? { ...t, ...values } : t)));
+        }}
       />
     </div>
   );
