@@ -17,18 +17,21 @@ export type Database = {
       board: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           title: string
           workspace_id: string
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           title: string
           workspace_id: string
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           title?: string
           workspace_id?: string
@@ -137,18 +140,21 @@ export type Database = {
       workspace: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           owner_id: string
           title: string
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           owner_id: string
           title: string
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           owner_id?: string
           title?: string

@@ -3,53 +3,92 @@
 import { useBoardContext } from "@/Providers/BoardProvider";
 import BoardCard from "@/components/widgets/boards/BoardCard";
 import { useState } from "react";
+import Link from "next/link";
+import WorkspaceDropdown from "@/components/features/workspace/WorkspaceDropdown";
+import Modal from "@/components/ui/Modal";
+import NewBoard from "@/components/features/board/NewBoard";
 
 const BoardsPage = () => {
-    const { boards, boardsState, createBoard, createBoardState } = useBoardContext();
-    const [newBoardTitle, setNewBoardTitle] = useState('');
+  const { boards, boardsState } = useBoardContext();
+  const [isNewBoardModalOpen, setIsNewBoardModalOpen] = useState(false);
 
-    const handleCreateBoard = async () => {
-        if(newBoardTitle.trim()){
-            console.log("calling create board")
-            await createBoard(newBoardTitle.trim());
-            setNewBoardTitle('');
-        }
-    }
-
+  if (boardsState === "loading" || boardsState === "initial") {
     return (
-        <div>
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">Boards</h2>
-                <div className="flex gap-2">
-                    <input 
-                        type="text"
-                        value={newBoardTitle}
-                        onChange={(e) => setNewBoardTitle(e.target.value)}
-                        placeholder="New board title"
-                        className="p-2 rounded bg-gray-200"
-                        disabled={createBoardState === 'loading'}
-                    />
-                    <button
-                        onClick={handleCreateBoard}
-                        className="p-2 bg-blue-600 text-white rounded disabled:bg-blue-400"
-                        disabled={createBoardState === 'loading'}
-                    >
-                        {createBoardState === 'loading' ? 'Creating...' : 'Create Board'}
-                    </button>
-                </div>
-            </div>
-
-            {boardsState === 'loading' ? (
-                <p>Loading boards...</p>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {boards.map(board => (
-                        <BoardCard key={board.id} board={board} />
-                    ))}
-                </div>
-            )}
-        </div>
+      <div className="flex items-center justify-center h-full">
+        <p>Loading boards...</p>
+      </div>
     );
+  }
+
+  if (boards.length === 0) {
+    return (
+      <>
+        <div className="p-8">
+          <div className="flex justify-between items-center mb-8">
+            <WorkspaceDropdown />
+            <button
+              onClick={() => setIsNewBoardModalOpen(true)}
+              className="px-6 py-3 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+            >
+              Create New Board
+            </button>
+          </div>
+          <div className="text-center h-full flex flex-col items-center justify-center">
+            <div className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-sm p-8 rounded-2xl border border-slate-800 text-center">
+              <h2 className="text-2xl font-bold mb-4 text-white">
+                No Boards Found
+              </h2>
+              <p className="text-slate-400 mb-6">
+                It looks like there are no boards in this workspace yet. Get
+                started by creating a new one.
+              </p>
+              <button
+                onClick={() => setIsNewBoardModalOpen(true)}
+                className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+              >
+                Create Your First Board
+              </button>
+            </div>
+          </div>
+        </div>
+        <Modal
+          isOpen={isNewBoardModalOpen}
+          onClose={() => setIsNewBoardModalOpen(false)}
+          title="Create New Board"
+        >
+          <NewBoard onClose={() => setIsNewBoardModalOpen(false)} />
+        </Modal>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="p-8">
+        <div className="flex justify-between items-center mb-8">
+          <WorkspaceDropdown />
+          <button
+            onClick={() => setIsNewBoardModalOpen(true)}
+            className="px-6 py-3 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+          >
+            Create New Board
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {boards.map((board) => (
+            <BoardCard key={board.id} board={board} />
+          ))}
+        </div>
+      </div>
+      <Modal
+        isOpen={isNewBoardModalOpen}
+        onClose={() => setIsNewBoardModalOpen(false)}
+        title="Create New Board"
+      >
+        <NewBoard onClose={() => setIsNewBoardModalOpen(false)} />
+      </Modal>
+    </>
+  );
 };
 
 export default BoardsPage;

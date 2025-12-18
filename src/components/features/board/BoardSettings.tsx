@@ -1,32 +1,26 @@
 "use client";
 
-import { useWorkspaceContext } from "@/Providers/WorkspaceProvider";
+import { useBoardContext } from "@/Providers/BoardProvider";
 import { Tables } from "@/types/database.types";
 import { useState } from "react";
 
-interface WorkspaceSettingsProps {
-  workspace: Tables<"workspace">;
+interface BoardSettingsProps {
+  board: Tables<"board">;
   onClose: () => void;
 }
 
-const WorkspaceSettings = ({
-  workspace,
-  onClose,
-}: WorkspaceSettingsProps) => {
-  const { updateWorkspace, deleteWorkspace, createWorkspaceState } =
-    useWorkspaceContext();
-  const [newTitle, setNewTitle] = useState(workspace.title);
-  const [newDescription, setNewDescription] = useState(
-    workspace.description || ""
-  );
+const BoardSettings = ({ board, onClose }: BoardSettingsProps) => {
+  const { updateBoard, deleteBoard, createBoardState } = useBoardContext();
+  const [newTitle, setNewTitle] = useState(board.title);
+  const [newDescription, setNewDescription] = useState(board.description || "");
 
   const handleUpdate = async () => {
     if (
       newTitle.trim() &&
-      (newTitle.trim() !== workspace.title ||
-        newDescription.trim() !== (workspace.description || ""))
+      (newTitle.trim() !== board.title ||
+        newDescription.trim() !== (board.description || ""))
     ) {
-      await updateWorkspace(workspace.id, {
+      await updateBoard(board.id, {
         title: newTitle.trim(),
         description: newDescription.trim(),
       });
@@ -35,7 +29,7 @@ const WorkspaceSettings = ({
   };
 
   const handleDelete = async () => {
-    await deleteWorkspace(workspace.id);
+    await deleteBoard(board.id);
     onClose();
   };
 
@@ -46,7 +40,7 @@ const WorkspaceSettings = ({
           htmlFor="newTitle"
           className="block text-sm font-medium text-slate-300 mb-2"
         >
-          Workspace title
+          Board title
         </label>
         <input
           id="newTitle"
@@ -54,7 +48,7 @@ const WorkspaceSettings = ({
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           className="w-full p-2 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500"
-          placeholder="My new workspace"
+          placeholder="My new board"
         />
       </div>
       <div className="mb-6">
@@ -62,14 +56,14 @@ const WorkspaceSettings = ({
           htmlFor="newDescription"
           className="block text-sm font-medium text-slate-300 mb-2"
         >
-          Workspace description (optional)
+          Board description (optional)
         </label>
         <textarea
           id="newDescription"
           value={newDescription}
           onChange={(e) => setNewDescription(e.target.value)}
           className="w-full p-2 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500"
-          placeholder="A brief description of your workspace"
+          placeholder="A brief description of your board"
           rows={3}
         />
       </div>
@@ -79,12 +73,12 @@ const WorkspaceSettings = ({
         className="w-full p-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-indigo-400/50 transition-colors"
         disabled={
           !newTitle.trim() ||
-          (newTitle.trim() === workspace.title &&
-            newDescription.trim() === (workspace.description || "")) ||
-          createWorkspaceState === "loading"
+          (newTitle.trim() === board.title &&
+            newDescription.trim() === (board.description || "")) ||
+          createBoardState === "loading"
         }
       >
-        {createWorkspaceState === "loading" ? "Saving..." : "Save changes"}
+        {createBoardState === "loading" ? "Saving..." : "Save changes"}
       </button>
 
       <div className="my-6 border-t border-slate-800"></div>
@@ -93,17 +87,17 @@ const WorkspaceSettings = ({
         Danger Zone
       </h3>
       <p className="text-sm text-slate-400 mb-4">
-        Deleting a workspace is permanent and cannot be undone.
+        Deleting a board is permanent and cannot be undone.
       </p>
       <button
         onClick={handleDelete}
         className="w-full p-2 bg-red-600/20 text-red-500 border border-red-500/50 rounded-md hover:bg-red-600/30 disabled:opacity-50 transition-colors"
-        disabled={createWorkspaceState === "loading"}
+        disabled={createBoardState === "loading"}
       >
-        {createWorkspaceState === "loading" ? "Deleting..." : "Delete Workspace"}
+        {createBoardState === "loading" ? "Deleting..." : "Delete Board"}
       </button>
     </div>
   );
 };
 
-export default WorkspaceSettings;
+export default BoardSettings;
