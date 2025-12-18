@@ -1,7 +1,9 @@
 "use client";
 
 import { useBoardContext } from "@/Providers/BoardProvider";
+import { useWorkspaceContext } from "@/Providers/WorkspaceProvider";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface NewBoardProps {
   onClose: () => void;
@@ -9,13 +11,18 @@ interface NewBoardProps {
 
 const NewBoard = ({ onClose }: NewBoardProps) => {
   const { createBoard, createBoardState } = useBoardContext();
+  const { activeWorkspaceId } = useWorkspaceContext();
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const router = useRouter();
 
   const handleCreate = async () => {
     if (newTitle.trim()) {
-      await createBoard(newTitle.trim(), newDescription.trim());
-      onClose();
+      const newBoard = await createBoard(newTitle.trim());
+      if (newBoard) {
+        onClose();
+        router.push(`/workspaces/${activeWorkspaceId}/boards/${newBoard.id}/view`);
+      }
     }
   };
 

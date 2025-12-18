@@ -8,6 +8,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronsUpDown, Check, LayoutGrid, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Modal from "@/components/ui/Modal";
+import NewBoard from "@/components/features/board/NewBoard";
 
 // Skeleton component for loading states
 const SkeletonItem = () => (
@@ -18,6 +20,7 @@ export default function WorkspaceSidebar() {
     const { workspaces, activeWorkspace, workspacesState } = useWorkspaceContext();
     const { boards, activeBoardId, boardsState } = useBoardContext();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isNewBoardModalOpen, setIsNewBoardModalOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
 
@@ -34,7 +37,11 @@ export default function WorkspaceSidebar() {
 
     const handleWorkspaceSelect = (workspaceId: string) => { 
         setIsMenuOpen(false);
-        router.push(`/workspaces/${workspaceId}`);
+        router.push(`/workspaces/${workspaceId}/boards`);
+    };
+
+    const handleBoardSelect = (boardId: string) => {
+        router.push(`/workspaces/${activeWorkspace?.id}/boards/${boardId}/view`);
     };
     
     return (
@@ -51,11 +58,11 @@ export default function WorkspaceSidebar() {
                         </div>
                     ) : boards.length > 0 ? (
                         boards.map((board) => (
-                            <Link
+                            <button
                                 key={board.id}
-                                href={`/workspaces/${activeWorkspace?.id}/boards/${board.id}/view`}
+                                onClick={() => handleBoardSelect(board.id)}
                                 className={cn(
-                                    "flex items-center gap-2 p-2 rounded-md text-sm font-medium transition-colors",
+                                    "w-full flex items-center gap-2 p-2 rounded-md text-sm font-medium transition-colors text-left",
                                     activeBoardId === board.id
                                         ? "bg-indigo-600/20 text-indigo-300"
                                         : "text-slate-300 hover:bg-slate-800/50"
@@ -63,13 +70,16 @@ export default function WorkspaceSidebar() {
                             >
                                 <LayoutGrid className="w-4 h-4" />
                                 <span>{board.title}</span>
-                            </Link>
+                            </button>
                         ))
                     ) : (
                         <p className="text-sm text-slate-500 px-2">No boards yet.</p>
                     )}
                 </div>
-                 <button className="flex items-center gap-2 p-2 mt-2 rounded-md text-sm font-medium text-slate-400 hover:bg-slate-800/50 w-full">
+                 <button
+                    onClick={() => setIsNewBoardModalOpen(true)}
+                    className="flex items-center gap-2 p-2 mt-2 rounded-md text-sm font-medium text-slate-400 hover:bg-slate-800/50 w-full"
+                 >
                     <Plus className="w-4 h-4" />
                     <span>New Board</span>
                  </button>
@@ -118,15 +128,23 @@ export default function WorkspaceSidebar() {
                         </div>
                     ) : activeWorkspace ? (
                         <div className="flex items-center gap-2 overflow-hidden">
-                            <div className="w-6 h-6 rounded-md bg-indigo-600 flex-shrink-0"></div>
+                            <div className="w-6 h-6 rounded-md bg-indigo-600 shrink-0"></div>
                             <span className="text-sm font-semibold text-white truncate">{activeWorkspace.title}</span>
                         </div>
                     ) : (
                          <span className="text-sm font-medium text-slate-400">No workspace</span>
                     )}
-                    <ChevronsUpDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <ChevronsUpDown className="w-4 h-4 text-slate-400 shrink-0" />
                 </button>
             </div>
+
+            <Modal
+                isOpen={isNewBoardModalOpen}
+                onClose={() => setIsNewBoardModalOpen(false)}
+                title="Create New Board"
+            >
+                <NewBoard onClose={() => setIsNewBoardModalOpen(false)} />
+            </Modal>
         </aside>
     );
 }
