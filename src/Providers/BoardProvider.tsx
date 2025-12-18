@@ -117,10 +117,28 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
+    // Step B: Create default lists for the new board
+    const defaultLists: TablesInsert<"list">[] = [
+      { board_id: newBoard.id, title: "Backlog", position: 0 },
+      { board_id: newBoard.id, title: "Todo", position: 1 },
+      { board_id: newBoard.id, title: "In Progress", position: 2 },
+      { board_id: newBoard.id, title: "Done", position: 3 },
+    ];
+
+    const { error: listError } = await supabase
+      .from("list")
+      .insert(defaultLists);
+
+    if (listError) {
+      dtoast(`Board created, but failed to create default lists: ${listError.message}`, "error");
+    } else {
+      dtoast("Board and default lists created successfully");
+    }
+
+    // Step C: Update application state: add the new board; lists are fetched per-board elsewhere
     setBoards((prevBoards) => [...prevBoards, newBoard]);
     setActiveBoardId(newBoard.id); // Switch to the new board
     setCreateBoardState("idle");
-    dtoast("Board created successfully");
     return newBoard;
   };
 
