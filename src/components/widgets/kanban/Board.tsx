@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 
 import { BoardColumn } from "./BoardColumn";
@@ -178,59 +178,49 @@ export function KanbanBoard() {
     </div>
   );
 
-  function createCard(columnId: Id) {
+  const createCard = useCallback((columnId: Id) => {
     const newCard: Card = {
       id: generateId(),
       columnId,
       content: `Card ${cards.length + 1}`,
     };
 
-    setCards([...cards, newCard]);
-  }
+    setCards(prevCards => [...prevCards, newCard]);
+  }, [cards.length]);
 
-  function deleteCard(id: Id) {
-    const newCards = cards.filter((card) => card.id !== id);
-    setCards(newCards);
-  }
+  const deleteCard = useCallback((id: Id) => {
+    setCards(prevCards => prevCards.filter((card) => card.id !== id));
+  }, []);
 
-  function updateCard(id: Id, content: string) {
-    const newCards = cards.map((card) => {
+  const updateCard = useCallback((id: Id, content: string) => {
+    setCards(prevCards => prevCards.map((card) => {
       if (card.id !== id) return card;
       return { ...card, content };
-    });
+    }));
+  }, []);
 
-    setCards(newCards);
-  }
-
-  function createNewColumn() {
+  const createNewColumn = useCallback(() => {
     const columnToAdd: Column = {
       id: generateId(),
       title: `Column ${columns.length + 1}`,
     };
 
-    setColumns([...columns, columnToAdd]);
-  }
+    setColumns(prevColumns => [...prevColumns, columnToAdd]);
+  }, [columns.length]);
 
+  const deleteColumn = useCallback((id: Id) => {
+    setColumns(prevColumns => prevColumns.filter((col) => col.id !== id));
+    setCards(prevCards => prevCards.filter((c) => c.columnId !== id));
+  }, []);
 
-
-  function deleteColumn(id: Id) {
-    const filteredColumns = columns.filter((col) => col.id !== id);
-    setColumns(filteredColumns);
-
-    const newCards = cards.filter((c) => c.columnId !== id);
-    setCards(newCards);
-  }
-
-  function updateColumn(id: Id, title: string) {
-    const newColumns = columns.map((col) => {
+  const updateColumn = useCallback((id: Id, title: string) => {
+    setColumns(prevColumns => prevColumns.map((col) => {
       if (col.id !== id) return col;
       return { ...col, title };
-    });
+    }));
+  }, []);
 
-    setColumns(newColumns);
-  }
-
-  function onDragStart(event: DragStartEvent) {
+  const onDragStart = useCallback((event: DragStartEvent) => {
     if (event.active.data.current?.type === "Column") {
       setActiveColumn(event.active.data.current.column);
       return;
@@ -240,9 +230,9 @@ export function KanbanBoard() {
       setActiveCard(event.active.data.current.card);
       return;
     }
-  }
+  }, []);
 
-  function onDragEnd(event: DragEndEvent) {
+  const onDragEnd = useCallback((event: DragEndEvent) => {
     setActiveColumn(null);
     setActiveCard(null);
 
@@ -257,18 +247,14 @@ export function KanbanBoard() {
     const isActiveAColumn = active.data.current?.type === "Column";
     if (!isActiveAColumn) return;
 
-    console.log("DRAG END");
-
     setColumns((columns) => {
       const activeColumnIndex = columns.findIndex((col) => col.id === activeId);
-
       const overColumnIndex = columns.findIndex((col) => col.id === overId);
-
       return arrayMove(columns, activeColumnIndex, overColumnIndex);
     });
-  }
+  }, []);
 
-  function onDragOver(event: DragOverEvent) {
+  const onDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event;
     if (!over) return;
 
@@ -303,13 +289,11 @@ export function KanbanBoard() {
     if (isActiveACard && isOverAColumn) {
       setCards((cards) => {
         const activeIndex = cards.findIndex((t) => t.id === activeId);
-
         cards[activeIndex].columnId = overId;
-        console.log("DROPPING CARD OVER COLUMN", { activeIndex });
         return arrayMove(cards, activeIndex, activeIndex);
       });
     }
-  }
+  }, []);
 }
 
 function generateId() {
