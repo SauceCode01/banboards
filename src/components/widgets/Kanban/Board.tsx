@@ -1,9 +1,10 @@
 "use client";
 import React, { useMemo, useState } from "react";
-import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, MouseSensor, TouchSensor, UniqueIdentifier, closestCorners, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, MouseSensor, TouchSensor, UniqueIdentifier, closestCorners, useSensor, useSensors, DragOverlay } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { BoardList } from "./BoardList";
 import type { List, Ticket } from "./types";
+import { TicketContent } from "./Ticket";
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
@@ -19,6 +20,7 @@ const DEFAULT_LISTS: List[] = [
 export const KanbanBoard: React.FC = () => {
   const [lists] = useState<List[]>(DEFAULT_LISTS);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
@@ -63,7 +65,10 @@ export const KanbanBoard: React.FC = () => {
     });
   }
 
-  function handleDragStart(_event: DragStartEvent) {}
+  function handleDragStart(event: DragStartEvent) {
+    const id = String(event.active.id);
+    setActiveId(id);
+  }
 
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event;
@@ -160,22 +165,38 @@ export const KanbanBoard: React.FC = () => {
 
       return updated;
     });
+    setActiveId(null);
+  }
+  function handleDragCancel() {
+    setActiveId(null);
   }
 
   return (
     <div className="w-full h-full overflow-x-auto p-4">
-      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
         <div className="flex gap-4 min-w-max">
           {lists.sort((a, b) => a.position - b.position).map((list) => (
             <BoardList
               key={list.id}
               list={list}
-              tickets={ticketsByList[list.id] || []}
+              tickets={(ticketsByList[list.id] || []).map((t) => ({ ...t }))}
               onAddTicket={addTicket}
               onDeleteTicket={deleteTicket}
             />
           ))}
         </div>
+        <DragOverlay>
+          {activeId ? (
+            (() => {
+              const activeTicket = tickets.find((t) => t.id === activeId);
+              return activeTicket ? (
+                <div className="pointer-events-none opacity-100 shadow-xl ring-1 ring-slate-700 rounded-md" style={{ transform: "translateZ(0)" }}>
+                  <TicketContent ticket={activeTicket} />
+                </div>
+              ) : null;
+            })()
+          ) : null}
+        </DragOverlay>
       </DndContext>
     </div>
   );
