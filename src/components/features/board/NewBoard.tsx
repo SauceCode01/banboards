@@ -18,7 +18,7 @@ const NewBoard = ({ onClose }: NewBoardProps) => {
 
   const handleCreate = async () => {
     if (newTitle.trim()) {
-      const newBoard = await createBoard(newTitle.trim());
+      const newBoard = await createBoard(newTitle.trim(), newDescription.trim());
       if (newBoard) {
         onClose();
         router.push(`/workspaces/${activeWorkspaceId}/boards/${newBoard.id}/view`);
