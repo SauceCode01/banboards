@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
   const [authState, setAuthState] = useState<AuthState>("initiating");
 
-  console.log("AuthProvider", { session, userProfile, authState });
+  // console.log("AuthProvider", { session, userProfile, authState });
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
@@ -90,7 +90,7 @@ const getProfileData = async (
       .eq("id", user.id)
       .maybeSingle();
 
-    console.log("Fetched profile:", profile);
+    // console.log("Fetched profile:", profile);
 
     if (profile) return profile;
 

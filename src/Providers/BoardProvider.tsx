@@ -15,7 +15,10 @@ import { dtoast } from "@/lib/utils";
 import { QueryState } from "@/types/query.types";
 import { useWorkspaceContext } from "./WorkspaceProvider";
 
-type CreateBoardType = (title: string, description?: string) => Promise<Tables<"board"> | undefined>;
+type CreateBoardType = (
+  title: string,
+  description?: string
+) => Promise<Tables<"board"> | undefined>;
 
 export type BoardContextType = {
   activeBoardId?: string;
@@ -32,7 +35,11 @@ export type BoardContextType = {
   deleteBoard: (boardId: string) => Promise<void>;
   deleteBoardState: QueryState;
 
-  updateBoard: (boardId: string, newTitle: string, newDescription?: string) => Promise<void>;
+  updateBoard: (
+    boardId: string,
+    newTitle: string,
+    newDescription?: string
+  ) => Promise<void>;
   updateBoardState: QueryState;
 };
 
@@ -58,6 +65,26 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
   const [createBoardState, setCreateBoardState] = useState<QueryState>("idle");
   const [deleteBoardState, setDeleteBoardState] = useState<QueryState>("idle");
   const [updateBoardState, setUpdateBoardState] = useState<QueryState>("idle");
+
+  useEffect(() => {
+    const channelA = supabase
+      .channel("schema-db-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+        },
+        (payload) => {
+          console.log("SUPABASE REALTIME DETECTED WOW", payload);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channelA);
+    };
+  }, []);
 
   // console.log(
   //   "boards",
@@ -87,7 +114,7 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
       } else if (data) {
         dtoast(`Fetched ${data.length} boards`);
         setBoards(data);
-        // Automatically select the first board of the workspace 
+        // Automatically select the first board of the workspace
       }
       setBoardsState("idle");
     };
@@ -130,7 +157,10 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
       .insert(defaultLists);
 
     if (listError) {
-      dtoast(`Board created, but failed to create default lists: ${listError.message}`, "error");
+      dtoast(
+        `Board created, but failed to create default lists: ${listError.message}`,
+        "error"
+      );
     } else {
       dtoast("Board and default lists created successfully");
     }
@@ -161,7 +191,11 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
     setDeleteBoardState("idle");
   };
 
-  const updateBoard = async (boardId: string, newTitle: string, newDescription?: string) => {
+  const updateBoard = async (
+    boardId: string,
+    newTitle: string,
+    newDescription?: string
+  ) => {
     setUpdateBoardState("loading");
     dtoast("Updating board...");
     const { data, error } = await supabase
