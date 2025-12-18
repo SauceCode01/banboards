@@ -3,25 +3,18 @@ import React, { useMemo, useState } from "react";
 import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, MouseSensor, TouchSensor, UniqueIdentifier, closestCorners, useSensor, useSensors, DragOverlay } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { BoardList } from "./BoardList";
-import type { List, Ticket } from "./types";
+import type { Ticket } from "./types";
 import { TicketContent } from "./Ticket";
 import AddTicketModal from "./AddTicketModal";
 import EditTicketModal from "./EditTicketModal";
+import { KanbanProvider, useKanban } from "@/Providers/KanbanProvider";
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-const DEFAULT_LISTS: List[] = [
-  { id: "backlog", board_id: 0, title: "Backlog", position: 0 },
-  { id: "todo", board_id: 0, title: "To Do", position: 1 },
-  { id: "in-progress", board_id: 0, title: "In Progress", position: 2 },
-  { id: "done", board_id: 0, title: "Done", position: 3 },
-];
-
-export const KanbanBoard: React.FC = () => {
-  const [lists] = useState<List[]>(DEFAULT_LISTS);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+const KanbanBoardInner: React.FC = () => {
+  const { lists, tickets, setTickets } = useKanban();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addListId, setAddListId] = useState<string | null>(null);
@@ -231,5 +224,11 @@ export const KanbanBoard: React.FC = () => {
     </div>
   );
 };
+
+export const KanbanBoard: React.FC = () => (
+  <KanbanProvider>
+    <KanbanBoardInner />
+  </KanbanProvider>
+);
 
 export default KanbanBoard;
