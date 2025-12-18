@@ -7,10 +7,14 @@ import Link from "next/link";
 import WorkspaceDropdown from "@/components/features/workspace/WorkspaceDropdown";
 import Modal from "@/components/ui/Modal";
 import NewBoard from "@/components/features/board/NewBoard";
+import CollaboratorsModal from "@/components/features/workspace/CollaboratorsModal";
+import { useParams } from "next/navigation";
 
 const BoardsPage = () => {
   const { boards, boardsState } = useBoardContext();
+  const { workspaceId } = useParams<{ workspaceId: string }>();
   const [isNewBoardModalOpen, setIsNewBoardModalOpen] = useState(false);
+  const [isCollaboratorsModalOpen, setIsCollaboratorsModalOpen] = useState(false);
 
   if (boardsState === "loading" || boardsState === "initial") {
     return (
@@ -26,12 +30,20 @@ const BoardsPage = () => {
         <div className="p-8">
           <div className="flex justify-between items-center mb-8">
             <WorkspaceDropdown />
-            <button
-              onClick={() => setIsNewBoardModalOpen(true)}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
-            >
-              Create New Board
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsCollaboratorsModalOpen(true)}
+                className="px-4 py-3 bg-slate-700 text-white rounded-lg shadow-md hover:bg-slate-600 transition-colors"
+              >
+                Collaborators
+              </button>
+              <button
+                onClick={() => setIsNewBoardModalOpen(true)}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+              >
+                Create New Board
+              </button>
+            </div>
           </div>
           <div className="text-center h-full flex flex-col items-center justify-center">
             <div className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-sm p-8 rounded-2xl border border-slate-800 text-center">
@@ -58,6 +70,13 @@ const BoardsPage = () => {
         >
           <NewBoard onClose={() => setIsNewBoardModalOpen(false)} />
         </Modal>
+        <Modal
+          isOpen={isCollaboratorsModalOpen}
+          onClose={() => setIsCollaboratorsModalOpen(false)}
+          title="Collaborators"
+        >
+          <CollaboratorsModal workspaceId={workspaceId as string} />
+        </Modal>
       </>
     );
   }
@@ -67,12 +86,20 @@ const BoardsPage = () => {
       <div className="p-8">
         <div className="flex justify-between items-center mb-8">
           <WorkspaceDropdown />
-          <button
-            onClick={() => setIsNewBoardModalOpen(true)}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
-          >
-            Create New Board
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setIsCollaboratorsModalOpen(true)}
+              className="px-4 py-3 bg-slate-700 text-white rounded-lg shadow-md hover:bg-slate-600 transition-colors"
+            >
+              Collaborators
+            </button>
+            <button
+              onClick={() => setIsNewBoardModalOpen(true)}
+              className="px-6 py-3 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+            >
+              Create New Board
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {boards.map((board) => (
@@ -86,6 +113,13 @@ const BoardsPage = () => {
         title="Create New Board"
       >
         <NewBoard onClose={() => setIsNewBoardModalOpen(false)} />
+      </Modal>
+      <Modal
+        isOpen={isCollaboratorsModalOpen}
+        onClose={() => setIsCollaboratorsModalOpen(false)}
+        title="Collaborators"
+      >
+        <CollaboratorsModal workspaceId={workspaceId as string} />
       </Modal>
     </>
   );
