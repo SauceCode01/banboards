@@ -195,21 +195,29 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!existsOnServer) return;
 
     try {
+      const dbDescription =
+        updates.description !== undefined
+          ? updates.description === ""
+            ? null
+            : updates.description
+          : undefined;
+      const dbDeadline =
+        updates.deadline !== undefined
+          ? updates.deadline === ""
+            ? null
+            : updates.deadline
+          : undefined;
+
       const { error, data } = await supabase
         .from("ticket")
         .update({
           ...(updates.title !== undefined ? { title: updates.title } : {}),
-          ...(updates.description !== undefined
-            ? { description: updates.description ?? null }
-            : {}),
-          ...(updates.deadline !== undefined
-            ? { deadline: updates.deadline ?? null }
-            : {}),
+          ...(updates.description !== undefined ? { description: dbDescription } : {}),
+          ...(updates.deadline !== undefined ? { deadline: dbDeadline } : {}),
         })
         .eq("id", id)
         .select()
         .single();
-        console.log(data, error, "HELLO WORLDDDDD");
       if (error || !data) throw error || new Error("Update failed");
       const committed = data as Tables<"ticket">;
       setCommittedTickets((prev) =>
