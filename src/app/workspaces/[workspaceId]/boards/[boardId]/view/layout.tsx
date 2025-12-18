@@ -11,7 +11,7 @@ export default function WorkspacesLayout({
     // <>{children}</>
     <main className="flex h-full">
       <WorkspaceSidebar />
-      <div className="flex-1 p-4 h-full ">{children}</div>
+      <div className="flex-1 h-full overflow-auto">{children}</div>
     </main>
   );
 }

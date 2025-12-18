@@ -9,7 +9,7 @@ export default function WorkspacesLayout({
 }>) {
   return (
     <AuthGuard>
-      <div className="flex flex-col w-full h-screen bg-slate-950 text-white">
+      <div className="flex flex-col w-full h-screen  bg-slate-950 text-white">
         <Navbar />
         {children}
       </div>

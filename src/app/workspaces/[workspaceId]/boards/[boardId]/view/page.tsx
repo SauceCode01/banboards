@@ -8,8 +8,7 @@ const BoardViewPage = () => {
     
     return (
         <div className="h-full w-full bg-slate-950">
-            {/* <KanbanBoard /> */}
-            hello world
+            <KanbanBoard />
         </div>
     )
 }

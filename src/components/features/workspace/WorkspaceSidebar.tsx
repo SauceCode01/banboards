@@ -45,7 +45,7 @@ export default function WorkspaceSidebar() {
     };
     
     return (
-        <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between p-3">
+        <aside className="w-64 min-w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between p-3">
             {/* Boards List */}
             <div className="flex-grow">
                 <h2 className="text-xs font-semibold text-slate-400 px-2 mb-2">BOARDS</h2>
