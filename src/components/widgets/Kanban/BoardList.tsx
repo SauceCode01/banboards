@@ -30,7 +30,7 @@ export const BoardList: React.FC<BoardListProps> = ({ list, tickets, onAddTicket
           ))}
         </SortableContext>
         <button onClick={() => onAddTicket(list.id)} className="w-full mt-2 text-left text-xs text-slate-300 hover:text-white py-1 px-2 rounded bg-slate-800/50 hover:bg-slate-800 border border-slate-700">
-          + Add ticket
+          + Add Task
         </button>
       </div>
     </div>

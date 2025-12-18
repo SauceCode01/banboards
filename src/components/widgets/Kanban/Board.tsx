@@ -5,6 +5,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { BoardList } from "./BoardList";
 import type { List, Ticket } from "./types";
 import { TicketContent } from "./Ticket";
+import AddTicketModal from "./AddTicketModal";
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
@@ -21,6 +22,8 @@ export const KanbanBoard: React.FC = () => {
   const [lists] = useState<List[]>(DEFAULT_LISTS);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addListId, setAddListId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
@@ -40,17 +43,25 @@ export const KanbanBoard: React.FC = () => {
   }, [lists, tickets]);
 
   function addTicket(listId: string) {
-    const listTickets = tickets.filter((t) => t.list_id === listId).sort((a, b) => a.position - b.position);
-    const nextPosition = listTickets.length;
+    setAddListId(listId);
+    setAddOpen(true);
+  }
+
+  function submitAddTicket(values: { title: string; description: string; deadline: string }) {
+    if (!addListId) return;
+    const listTickets = tickets.filter((t) => t.list_id === addListId).sort((a, b) => a.position - b.position);
+    const nextPosition = listTickets.length; // place at bottom
     const newTicket: Ticket = {
       id: uid(),
-      list_id: listId,
+      list_id: addListId,
       position: nextPosition,
-      title: "New Ticket",
-      description: "",
-      deadline: "",
+      title: values.title,
+      description: values.description,
+      deadline: values.deadline || "",
     };
     setTickets((prev) => [...prev, newTicket]);
+    setAddOpen(false);
+    setAddListId(null);
   }
 
   function deleteTicket(id: string) {
@@ -198,6 +209,15 @@ export const KanbanBoard: React.FC = () => {
           ) : null}
         </DragOverlay>
       </DndContext>
+      <AddTicketModal
+        isOpen={addOpen}
+        onClose={() => {
+          setAddOpen(false);
+          setAddListId(null);
+        }}
+        listName={lists.find((l) => l.id === addListId)?.title}
+        onSubmit={submitAddTicket}
+      />
     </div>
   );
 };
