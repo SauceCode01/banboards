@@ -246,7 +246,59 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     const moved = current.find((t) => t.id === ticketId);
     if (!moved) return;
     const sourceListId = moved.list_id;
+    // Reorder within the same list
+    if (sourceListId === newListId) {
+      const sameList = current
+        .filter((t) => t.list_id === sourceListId && t.id !== ticketId)
+        .sort((a, b) => a.position - b.position);
+      const insertIndex = Math.max(
+        0,
+        Math.min(Math.floor(newPosition), sameList.length)
+      );
+      const reordered = [
+        ...sameList.slice(0, insertIndex),
+        { ...moved },
+        ...sameList.slice(insertIndex),
+      ];
+      reordered.forEach((t, idx) => (t.position = idx));
+      const others = current.filter((t) => t.list_id !== sourceListId);
+      setTickets([...others, ...reordered]);
 
+      const changed = reordered.map((t) => ({
+        id: t.id,
+        list_id: t.list_id,
+        position: t.position,
+      }));
+      const tempMove = !committedTickets.some((t) => t.id === ticketId);
+      if (tempMove) return;
+      try {
+        const { error, data } = await supabase
+          .from("ticket")
+          .upsert(changed)
+          .select();
+        if (error) throw error;
+        const updated = (data || []) as Tables<"ticket">[];
+        setCommittedTickets((prev) => {
+          const map = new Map(prev.map((t) => [t.id, t]));
+          updated.forEach((u) => map.set(u.id, u));
+          return Array.from(map.values());
+        });
+      } catch (e) {
+        setTickets(
+          committedTickets.map((t) => ({
+            id: t.id,
+            list_id: t.list_id,
+            position: t.position,
+            title: t.title,
+            description: t.description || "",
+            deadline: t.deadline || "",
+          }))
+        );
+      }
+      return;
+    }
+
+    // Move across different lists
     const source = current
       .filter((t) => t.list_id === sourceListId && t.id !== ticketId)
       .sort((a, b) => a.position - b.position);
@@ -267,12 +319,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     newTarget.forEach((t, idx) => (t.position = idx));
 
     const nextUI = current
-      .filter(
-        (t) =>
-          t.list_id !== sourceListId &&
-          t.list_id !== newListId &&
-          t.id !== ticketId
-      )
+      .filter((t) => t.list_id !== sourceListId && t.list_id !== newListId)
       .concat(source)
       .concat(newTarget);
     setTickets(nextUI);
@@ -290,6 +337,8 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
         .from("ticket")
         .upsert(changed)
         .select();
+
+        console.log(error, data, "REORDERRRRRRR");
       if (error) throw error;
       const updated = (data || []) as Tables<"ticket">[];
       setCommittedTickets((prev) => {
