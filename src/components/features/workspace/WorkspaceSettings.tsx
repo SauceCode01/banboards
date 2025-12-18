@@ -9,10 +9,7 @@ interface WorkspaceSettingsProps {
   onClose: () => void;
 }
 
-const WorkspaceSettings = ({
-  workspace,
-  onClose,
-}: WorkspaceSettingsProps) => {
+const WorkspaceSettings = ({ workspace, onClose }: WorkspaceSettingsProps) => {
   const { updateWorkspace, deleteWorkspace, createWorkspaceState } =
     useWorkspaceContext();
   const [newTitle, setNewTitle] = useState(workspace.title);
@@ -26,10 +23,11 @@ const WorkspaceSettings = ({
       (newTitle.trim() !== workspace.title ||
         newDescription.trim() !== (workspace.description || ""))
     ) {
-      await updateWorkspace(workspace.id, {
-        title: newTitle.trim(),
-        description: newDescription.trim(),
-      });
+      await updateWorkspace(
+        workspace.id,
+        newTitle.trim(),
+        newDescription.trim()
+      );
       onClose();
     }
   };
@@ -89,9 +87,7 @@ const WorkspaceSettings = ({
 
       <div className="my-6 border-t border-slate-800"></div>
 
-      <h3 className="text-lg font-semibold text-red-500 mb-2">
-        Danger Zone
-      </h3>
+      <h3 className="text-lg font-semibold text-red-500 mb-2">Danger Zone</h3>
       <p className="text-sm text-slate-400 mb-4">
         Deleting a workspace is permanent and cannot be undone.
       </p>
@@ -100,7 +96,9 @@ const WorkspaceSettings = ({
         className="w-full p-2 bg-red-600/20 text-red-500 border border-red-500/50 rounded-md hover:bg-red-600/30 disabled:opacity-50 transition-colors"
         disabled={createWorkspaceState === "loading"}
       >
-        {createWorkspaceState === "loading" ? "Deleting..." : "Delete Workspace"}
+        {createWorkspaceState === "loading"
+          ? "Deleting..."
+          : "Delete Workspace"}
       </button>
     </div>
   );

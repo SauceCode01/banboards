@@ -14,9 +14,11 @@ import {
 import { useAuthContext } from "./AuthProvider";
 import { QueryState } from "@/types/query.types";
 import { dtoast } from "@/lib/utils";
+import { desc } from "framer-motion/client";
 
 type CreateWorkspaceType = (
-  title: string
+  title: string,
+  description?: string
 ) => Promise<Tables<"workspace"> | undefined>;
 
 export type WorkspaceContextType = {
@@ -34,7 +36,7 @@ export type WorkspaceContextType = {
   deleteWorkspace: (workspaceId: string) => Promise<void>;
   deleteWorkspaceState: QueryState;
 
-  updateWorkspace: (workspaceId: string, newTitle: string) => Promise<void>;
+  updateWorkspace: (workspaceId: string, newTitle: string, newDescription?: string) => Promise<void>;
   updateWorkspaceState: QueryState;
 };
 
@@ -98,12 +100,13 @@ export const WorkspaceProvider = ({
     handleFetchWorkspaces();
   }, [userProfile, activeWorkspaceId]); // Depend on activeWorkspaceId to refetch if needed, though not strictly necessary here.
 
-  const createWorkspace = async (title: string) => {
+  const createWorkspace = async (title: string, description?: string) => {
     if (!userProfile || !title.trim()) return;
     setCreateWorkspaceState("loading");
 
     const newWorkspaceDTO: TablesInsert<"workspace"> = {
       title,
+      description,
       owner_id: userProfile.id,
     };
     const { data: newWorkspace, error: createError } = await supabase
@@ -168,12 +171,12 @@ export const WorkspaceProvider = ({
     setDeleteWorkspaceState("idle");
   };
 
-  const updateWorkspace = async (workspaceId: string, newTitle: string) => {
+  const updateWorkspace = async (workspaceId: string, newTitle: string, newDescription?: string) => {
     setUpdateWorkspaceState("loading");
     dtoast("Updating workspace...");
     const { data, error } = await supabase
       .from("workspace")
-      .update({ title: newTitle })
+      .update({ title: newTitle, description: newDescription })
       .eq("id", workspaceId)
       .select()
       .single();

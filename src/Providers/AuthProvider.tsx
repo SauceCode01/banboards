@@ -84,11 +84,6 @@ const getProfileData = async (
     // 1. Try to fetch
     console.log("Fetching profile...", user);
 
-    // Create a timeout promise that rejects after 5 seconds
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Request timed out")), 5000)
-    );
-
     const { data: profile, error } = await supabase
       .from("user_profile")
       .select("*")

@@ -7,8 +7,9 @@ const BoardViewPage = () => {
     const { boardId } = useParams<{ boardId: string }>();
     
     return (
-        <div className="h-screen w-full bg-slate-950">
-            <KanbanBoard />
+        <div className="h-full w-full bg-slate-950">
+            {/* <KanbanBoard /> */}
+            hello world
         </div>
     )
 }

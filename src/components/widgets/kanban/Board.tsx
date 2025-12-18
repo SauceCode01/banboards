@@ -114,6 +114,144 @@ export function KanbanBoard() {
     })
   );
 
+  const createCard = useCallback(
+    (columnId: Id) => {
+      const newCard: Card = {
+        id: generateId(),
+        columnId,
+        content: `Card ${cards.length + 1}`,
+      };
+
+      setCards((prevCards) => [...prevCards, newCard]);
+    },
+    [cards.length]
+  );
+
+  const deleteCard = useCallback((id: Id) => {
+    setCards((prevCards) => prevCards.filter((card) => card.id !== id));
+  }, []);
+
+  const updateCard = useCallback((id: Id, content: string) => {
+    setCards((prevCards) =>
+      prevCards.map((card) => {
+        if (card.id !== id) return card;
+        return { ...card, content };
+      })
+    );
+  }, []);
+
+  const createNewColumn = useCallback(() => {
+    const columnToAdd: Column = {
+      id: generateId(),
+      title: `Column ${columns.length + 1}`,
+    };
+
+    setColumns((prevColumns) => [...prevColumns, columnToAdd]);
+  }, [columns.length]);
+
+  const deleteColumn = useCallback((id: Id) => {
+    setColumns((prevColumns) => prevColumns.filter((col) => col.id !== id));
+    setCards((prevCards) => prevCards.filter((c) => c.columnId !== id));
+  }, []);
+
+  const updateColumn = useCallback((id: Id, title: string) => {
+    setColumns((prevColumns) =>
+      prevColumns.map((col) => {
+        if (col.id !== id) return col;
+        return { ...col, title };
+      })
+    );
+  }, []);
+
+  const onDragStart = useCallback((event: DragStartEvent) => {
+    if (event.active.data.current?.type === "Column") {
+      setActiveColumn(event.active.data.current.column);
+      return;
+    }
+
+    if (event.active.data.current?.type === "Card") {
+      setActiveCard(event.active.data.current.card);
+      return;
+    }
+  }, []);
+
+  const onDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveColumn(null);
+    setActiveCard(null);
+
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    if (activeId === overId) return;
+
+    const isActiveAColumn = active.data.current?.type === "Column";
+    if (!isActiveAColumn) return;
+
+    setColumns((columns) => {
+      const activeColumnIndex = columns.findIndex((col) => col.id === activeId);
+      const overColumnIndex = columns.findIndex((col) => col.id === overId);
+      return arrayMove(columns, activeColumnIndex, overColumnIndex);
+    });
+  }, []);
+
+  const onDragOver = useCallback((event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    if (activeId === overId) return;
+
+    const isActiveACard = active.data.current?.type === "Card";
+    const isOverACard = over.data.current?.type === "Card";
+
+    if (!isActiveACard) return;
+
+    // Im dropping a Card over another Card
+    if (isActiveACard && isOverACard) {
+      setCards((prev) => {
+        const activeIndex = prev.findIndex((t) => t.id === activeId);
+        const overIndex = prev.findIndex((t) => t.id === overId);
+        if (activeIndex === -1 || overIndex === -1) return prev;
+
+        const activeCard = prev[activeIndex];
+        const overCard = prev[overIndex];
+
+        // No-op if same item
+        if (activeCard.id === overCard.id) return prev;
+
+        // Moving across columns: update column immutably then position
+        if (activeCard.columnId !== overCard.columnId) {
+          const updated = [...prev];
+          updated[activeIndex] = { ...activeCard, columnId: overCard.columnId };
+          return arrayMove(updated, activeIndex, Math.max(0, overIndex - 1));
+        }
+
+        // Same column: only move if index actually changes
+        if (activeIndex === overIndex) return prev;
+        return arrayMove([...prev], activeIndex, overIndex);
+      });
+    }
+
+    const isOverAColumn = over.data.current?.type === "Column";
+
+    // Im dropping a Card over a column
+    if (isActiveACard && isOverAColumn) {
+      setCards((prev) => {
+        const activeIndex = prev.findIndex((t) => t.id === activeId);
+        if (activeIndex === -1) return prev;
+        if (prev[activeIndex].columnId === overId) return prev;
+        const updated = [...prev];
+        updated[activeIndex] = { ...updated[activeIndex], columnId: overId };
+        return updated;
+      });
+    }
+  }, []);
+
   return (
     <div className="flex min-h-screen w-full items-start overflow-x-auto overflow-y-hidden p-6 bg-slate-950">
       <DndContext
@@ -177,123 +315,6 @@ export function KanbanBoard() {
       </DndContext>
     </div>
   );
-
-  const createCard = useCallback((columnId: Id) => {
-    const newCard: Card = {
-      id: generateId(),
-      columnId,
-      content: `Card ${cards.length + 1}`,
-    };
-
-    setCards(prevCards => [...prevCards, newCard]);
-  }, [cards.length]);
-
-  const deleteCard = useCallback((id: Id) => {
-    setCards(prevCards => prevCards.filter((card) => card.id !== id));
-  }, []);
-
-  const updateCard = useCallback((id: Id, content: string) => {
-    setCards(prevCards => prevCards.map((card) => {
-      if (card.id !== id) return card;
-      return { ...card, content };
-    }));
-  }, []);
-
-  const createNewColumn = useCallback(() => {
-    const columnToAdd: Column = {
-      id: generateId(),
-      title: `Column ${columns.length + 1}`,
-    };
-
-    setColumns(prevColumns => [...prevColumns, columnToAdd]);
-  }, [columns.length]);
-
-  const deleteColumn = useCallback((id: Id) => {
-    setColumns(prevColumns => prevColumns.filter((col) => col.id !== id));
-    setCards(prevCards => prevCards.filter((c) => c.columnId !== id));
-  }, []);
-
-  const updateColumn = useCallback((id: Id, title: string) => {
-    setColumns(prevColumns => prevColumns.map((col) => {
-      if (col.id !== id) return col;
-      return { ...col, title };
-    }));
-  }, []);
-
-  const onDragStart = useCallback((event: DragStartEvent) => {
-    if (event.active.data.current?.type === "Column") {
-      setActiveColumn(event.active.data.current.column);
-      return;
-    }
-
-    if (event.active.data.current?.type === "Card") {
-      setActiveCard(event.active.data.current.card);
-      return;
-    }
-  }, []);
-
-  const onDragEnd = useCallback((event: DragEndEvent) => {
-    setActiveColumn(null);
-    setActiveCard(null);
-
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id;
-    const overId = over.id;
-
-    if (activeId === overId) return;
-
-    const isActiveAColumn = active.data.current?.type === "Column";
-    if (!isActiveAColumn) return;
-
-    setColumns((columns) => {
-      const activeColumnIndex = columns.findIndex((col) => col.id === activeId);
-      const overColumnIndex = columns.findIndex((col) => col.id === overId);
-      return arrayMove(columns, activeColumnIndex, overColumnIndex);
-    });
-  }, []);
-
-  const onDragOver = useCallback((event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id;
-    const overId = over.id;
-
-    if (activeId === overId) return;
-
-    const isActiveACard = active.data.current?.type === "Card";
-    const isOverACard = over.data.current?.type === "Card";
-
-    if (!isActiveACard) return;
-
-    // Im dropping a Card over another Card
-    if (isActiveACard && isOverACard) {
-      setCards((cards) => {
-        const activeIndex = cards.findIndex((t) => t.id === activeId);
-        const overIndex = cards.findIndex((t) => t.id === overId);
-
-        if (cards[activeIndex].columnId != cards[overIndex].columnId) {
-          cards[activeIndex].columnId = cards[overIndex].columnId;
-          return arrayMove(cards, activeIndex, overIndex - 1);
-        }
-
-        return arrayMove(cards, activeIndex, overIndex);
-      });
-    }
-
-    const isOverAColumn = over.data.current?.type === "Column";
-
-    // Im dropping a Card over a column
-    if (isActiveACard && isOverAColumn) {
-      setCards((cards) => {
-        const activeIndex = cards.findIndex((t) => t.id === activeId);
-        cards[activeIndex].columnId = overId;
-        return arrayMove(cards, activeIndex, activeIndex);
-      });
-    }
-  }, []);
 }
 
 function generateId() {

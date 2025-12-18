@@ -8,9 +8,10 @@ export default function WorkspacesLayout({
   children: React.ReactNode;
 }>) {
   return (
-   <main className="flex h-full">
-          <WorkspaceSidebar />
-          <div className="flex-1 p-4 h-full overflow-y-auto">{children}</div>
-        </main>
+    // <>{children}</>
+    <main className="flex h-full">
+      <WorkspaceSidebar />
+      <div className="flex-1 p-4 h-full ">{children}</div>
+    </main>
   );
 }
