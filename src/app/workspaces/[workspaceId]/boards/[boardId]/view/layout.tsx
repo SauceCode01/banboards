@@ -8,11 +8,9 @@ export default function WorkspacesLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <AuthGuard>
-      <div className="flex flex-col w-full h-screen bg-slate-950 text-white">
-        <Navbar />
-        {children}
-      </div>
-    </AuthGuard>
+   <main className="flex h-full">
+          <WorkspaceSidebar />
+          <div className="flex-1 p-4 h-full overflow-y-auto">{children}</div>
+        </main>
   );
 }

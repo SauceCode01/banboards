@@ -2,7 +2,6 @@
 
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { Tables, TablesInsert } from "@/types/database.types";
-import { Session } from "@supabase/supabase-js";
 import {
   createContext,
   Dispatch,
@@ -10,8 +9,8 @@ import {
   useContext,
   useEffect,
   useState,
+  useMemo,
 } from "react";
-import { toast } from "react-toastify";
 import { useAuthContext } from "./AuthProvider";
 import { QueryState } from "@/types/query.types";
 import { dtoast } from "@/lib/utils";
@@ -20,12 +19,10 @@ type CreateWorkspaceType = (
   title: string
 ) => Promise<Tables<"workspace"> | undefined>;
 
-/**
- * defining the type of the context
- */
 export type WorkspaceContextType = {
   activeWorkspaceId?: string;
-  setAcctiveWorkspaceId: Dispatch<SetStateAction<string | undefined>>;
+  setActiveWorkspaceId: Dispatch<SetStateAction<string | undefined>>;
+  activeWorkspace?: Tables<"workspace">;
 
   workspaces: Tables<"workspace">[];
   setWorkspaces: Dispatch<SetStateAction<Tables<"workspace">[]>>;
@@ -41,98 +38,74 @@ export type WorkspaceContextType = {
   updateWorkspaceState: QueryState;
 };
 
-/**
- * creating the context
- */
 const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
 
-/**
- * creating a hook to use the context
- */
 export const useWorkspaceContext = () => {
   const context = useContext(WorkspaceContext);
   if (!context) {
-    throw new Error("useAuthContext must be used within an AuthProvider");
+    throw new Error(
+      "useWorkspaceContext must be used within a WorkspaceProvider"
+    );
   }
   return context;
 };
 
-/**
- * creating the context provider to wrap the app
- */
 export const WorkspaceProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
-  // using the auth context to detect the current user
   const { userProfile } = useAuthContext();
 
-  // defining workspaces states
-  const [activeWorkspaceId, setAcctiveWorkspaceId] = useState<
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<
     string | undefined
   >(undefined);
   const [workspaces, setWorkspaces] = useState<Tables<"workspace">[]>([]);
   const [workspacesState, setWorkspacesState] = useState<QueryState>("idle");
 
-  // defining states for mutations
   const [createWorkspaceState, setCreateWorkspaceState] =
-    useState<QueryState>("initial");
+    useState<QueryState>("idle");
   const [deleteWorkspaceState, setDeleteWorkspaceState] =
-    useState<QueryState>("initial");
+    useState<QueryState>("idle");
   const [updateWorkspaceState, setUpdateWorkspaceState] =
-    useState<QueryState>("initial");
+    useState<QueryState>("idle");
 
   useEffect(() => {
-    // set initial states to idle
-    if (createWorkspaceState === "initial") setCreateWorkspaceState("idle");
-    if (deleteWorkspaceState === "initial") setDeleteWorkspaceState("idle");
-    if (updateWorkspaceState === "initial") setUpdateWorkspaceState("idle");
-  }, []);
-
-  // fetching workspaces
-  useEffect(() => {
-    // ensure there is a user
     if (!userProfile) return;
 
     const handleFetchWorkspaces = async () => {
+      if (!userProfile) return;
+
       setWorkspacesState("loading");
 
-      if (workspaces.length > 0) setWorkspacesState("refetch");
-      else setWorkspacesState("loading");
-
-      // Fetch workspaces of the user.
-      // no need to filter due to RLS
-      const { data, error } = await supabase.from("workspace").select("* ");
+      const { data, error } = await supabase.from("workspace").select("*");
 
       if (error) {
         dtoast(`Error fetching workspaces: ${error.message}`, "error");
         setWorkspaces([]);
+        setWorkspacesState("idle");
       } else if (data) {
         dtoast(`Fetched ${data.length} workspaces`);
         setWorkspaces(data);
+        // If there's no active workspace and we have data, set the first one as active.
+        if (data.length > 0 && !activeWorkspaceId) {
+          setActiveWorkspaceId(data[0].id);
+        }
+        setWorkspacesState("idle");
       }
-      setWorkspacesState("idle");
     };
 
     handleFetchWorkspaces();
-  }, [userProfile]);
+  }, [userProfile, activeWorkspaceId]); // Depend on activeWorkspaceId to refetch if needed, though not strictly necessary here.
 
-  // function to create a new workspace
   const createWorkspace = async (title: string) => {
-    // ensure there is a user
-    // ensure there is a title
     if (!userProfile || !title.trim()) return;
-
     setCreateWorkspaceState("loading");
 
-    // create the new workspace
     const newWorkspaceDTO: TablesInsert<"workspace"> = {
-      title: title,
+      title,
       owner_id: userProfile.id,
     };
-
-    // post it on db and query it
     const { data: newWorkspace, error: createError } = await supabase
       .from("workspace")
       .insert(newWorkspaceDTO)
@@ -141,16 +114,15 @@ export const WorkspaceProvider = ({
 
     if (createError || !newWorkspace) {
       dtoast(`Error creating workspace: ${createError?.message}`, "error");
+      setCreateWorkspaceState("idle");
       return;
     }
 
-    // add the new workspace member
     const newMemberDTO: TablesInsert<"workspace_member"> = {
       workspace_id: newWorkspace.id,
       user_id: userProfile.id,
       role: "owner",
     };
-
     const { error: memberError } = await supabase
       .from("workspace_member")
       .insert(newMemberDTO);
@@ -160,23 +132,23 @@ export const WorkspaceProvider = ({
         `Error creating workspace member: ${memberError.message}`,
         "error"
       );
-      // roll back workspace creation
       await supabase.from("workspace").delete().eq("id", newWorkspace.id);
-
+      setCreateWorkspaceState("idle");
       return;
     }
 
-    setWorkspaces((prevWorkspaces) => [...prevWorkspaces, newWorkspace]);
+    setWorkspaces((prev) => [...prev, newWorkspace]);
+    setActiveWorkspaceId(newWorkspace.id); // Switch to the new workspace
     setCreateWorkspaceState("idle");
     dtoast("Workspace created successfully");
-
     return newWorkspace;
   };
 
   const deleteWorkspace = async (workspaceId: string) => {
+    if (!workspaceId) return;
+    if (!userProfile) return;
     setDeleteWorkspaceState("loading");
     dtoast("Deleting workspace...");
-
     const { error } = await supabase
       .from("workspace")
       .delete()
@@ -186,6 +158,11 @@ export const WorkspaceProvider = ({
       dtoast(`Error deleting workspace: ${error.message}`, "error");
     } else {
       setWorkspaces((prev) => prev.filter((w) => w.id !== workspaceId));
+      // If the deleted workspace was the active one, switch to the first available one
+      if (activeWorkspaceId === workspaceId) {
+        const firstWorkspace = workspaces.find((w) => w.id !== workspaceId);
+        setActiveWorkspaceId(firstWorkspace?.id);
+      }
       dtoast("Workspace deleted successfully");
     }
     setDeleteWorkspaceState("idle");
@@ -194,7 +171,6 @@ export const WorkspaceProvider = ({
   const updateWorkspace = async (workspaceId: string, newTitle: string) => {
     setUpdateWorkspaceState("loading");
     dtoast("Updating workspace...");
-
     const { data, error } = await supabase
       .from("workspace")
       .update({ title: newTitle })
@@ -213,20 +189,22 @@ export const WorkspaceProvider = ({
     setUpdateWorkspaceState("idle");
   };
 
+  const activeWorkspace = useMemo(
+    () => workspaces.find((w) => w.id === activeWorkspaceId),
+    [workspaces, activeWorkspaceId]
+  );
+
   const value = {
     activeWorkspaceId,
-    setAcctiveWorkspaceId,
-
+    setActiveWorkspaceId,
+    activeWorkspace,
     workspaces,
     setWorkspaces,
     workspacesState,
-
     createWorkspace,
     createWorkspaceState,
-
     deleteWorkspace,
     deleteWorkspaceState,
-
     updateWorkspace,
     updateWorkspaceState,
   };

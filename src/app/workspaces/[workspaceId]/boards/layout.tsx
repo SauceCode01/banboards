@@ -10,12 +10,18 @@ type Props = {
 };
 
 export const layout = (props: Props) => {
-  const { boardId } = useParams<{ boardId: string }>();
+  const { boardId, workspace } = useParams<{ boardId: string, workspace: string }>();
   const { boards, setActiveBoardId } = useBoardContext();
+    const { workspaces, setActiveWorkspaceId } = useWorkspaceContext();
+
 
   useEffect(() => {
     setActiveBoardId(boardId);
-  }, [setActiveBoardId]);
+  }, [setActiveBoardId, boardId ]);
+
+  useEffect(() => {
+    setActiveWorkspaceId(workspace);
+  }, [setActiveWorkspaceId, workspace ]);
 
   return <>{props.children}</>;
 };

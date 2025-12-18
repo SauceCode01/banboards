@@ -5,7 +5,7 @@ import { Tables } from "@/types/database.types";
 import { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
 
-export type AuthState = 'initiating' | 'authenticated' | 'unauthenticated';
+export type AuthState = "initiating" | "authenticated" | "unauthenticated";
 
 export type AuthContextType = {
   session: Session | null;
@@ -25,68 +25,47 @@ export const useAuthContext = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
-  const [userProfile, setUserProfile] = useState<Tables<"user_profile"> | null>(null);
-  const [authState, setAuthState] = useState<AuthState>('initiating');
+  const [userProfile, setUserProfile] = useState<Tables<"user_profile"> | null>(
+    null
+  );
+  const [authState, setAuthState] = useState<AuthState>("initiating");
+
+  console.log("AuthProvider", { session, userProfile, authState });
 
   useEffect(() => {
-    const { data: authStateListener } = supabase.auth.onAuthStateChange(
+    const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log(`Auth event: ${event}`);
+
         if (currentSession) {
-          // If a session exists, we are potentially authenticated,
-          // but we need to fetch the profile first.
+          // 2. Set everything at once (Batching)
           setSession(currentSession);
-          await fetchOrCreateProfile(currentSession.user);
-          setAuthState('authenticated');
+          setAuthState("authenticated");
         } else {
-          // If no session, we are unauthenticated.
+          // Handle Logout
           setSession(null);
-          setUserProfile(null);
-          setAuthState('unauthenticated');
+          setAuthState("unauthenticated");
         }
       }
     );
 
-    return () => authStateListener.subscription.unsubscribe();
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
-  const fetchOrCreateProfile = async (user: User) => {
-    try {
-      // First, try to fetch the profile
-      const { data: profile, error } = await supabase
-        .from("user_profile")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profile) {
-        setUserProfile(profile);
-        return;
-      }
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 is 'exact-single-row-not-found'
-        throw error;
-      }
-      
-      // If no profile, create one
-      const { data: newProfile, error: createError } = await supabase
-        .from("user_profile")
-        .insert([{ id: user.id, username: user.email!.split("@")[0], email: user.email! }])
-        .select()
-        .single();
-
-      if (createError) {
-        throw createError;
-      }
-
-      setUserProfile(newProfile);
-
-    } catch (err) {
-      console.error("Error fetching or creating user profile:", err);
-      // Even if profile fails, user is still logged in. Handle accordingly.
-      // For now, we'll leave profile as null.
+  useEffect(() => {
+    if (!session) {
       setUserProfile(null);
+      return;
     }
-  };
+
+    const loadProfile = async () => {
+      const profile = await getProfileData(session.user);
+      setUserProfile(profile);
+    };
+    loadProfile();
+  }, [session]);
 
   const value: AuthContextType = {
     session,
@@ -94,9 +73,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     authState,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// Helper function just returns data, doesn't touch state
+const getProfileData = async (
+  user: User
+): Promise<Tables<"user_profile"> | null> => {
+  try {
+    // 1. Try to fetch
+    console.log("Fetching profile...", user);
+
+    // Create a timeout promise that rejects after 5 seconds
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Request timed out")), 5000)
+    );
+
+    const { data: profile, error } = await supabase
+      .from("user_profile")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    console.log("Fetched profile:", profile);
+
+    if (profile) return profile;
+
+    // 2. If not found, create
+    console.log("Profile not found, creating...");
+    if (!profile && (!error || error.code === "PGRST116")) {
+      const { data: newProfile, error: createError } = await supabase
+        .from("user_profile")
+        .insert([
+          {
+            id: user.id,
+            username: user.email!.split("@")[0],
+            email: user.email!,
+          },
+        ])
+        .select()
+        .single();
+
+      if (newProfile) return newProfile;
+    }
+  } catch (err) {
+    console.error("Error loading profile:", err);
+  }
+  return null;
 };

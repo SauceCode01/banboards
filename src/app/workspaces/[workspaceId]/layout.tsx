@@ -10,11 +10,11 @@ type Props = {
 
 export const layout = (props: Props) => {
   const { workspaceId } = useParams<{ workspaceId: string }>();
-  const { workspaces, setAcctiveWorkspaceId } = useWorkspaceContext();
+  const { workspaces, setActiveWorkspaceId } = useWorkspaceContext();
 
   useEffect(() => {
-    setAcctiveWorkspaceId(workspaceId);
-  }, [setAcctiveWorkspaceId]);
+    setActiveWorkspaceId(workspaceId);
+  }, [setActiveWorkspaceId]);
 
   return <>{props.children}</>;
 };

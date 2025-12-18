@@ -1,73 +1,132 @@
 "use client";
-import { supabase } from "@/lib/supabase/supabaseClient";
-import { cn } from "@/lib/utils";
-import { useAuthContext } from "@/Providers/AuthProvider";
+
 import { useWorkspaceContext } from "@/Providers/WorkspaceProvider";
-import { Tables, TablesInsert } from "@/types/database.types";
+import { useBoardContext } from "@/Providers/BoardProvider";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { ChevronsUpDown, Check, LayoutGrid, Plus, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const WorkspaceSidebar = () => {
-  const { userProfile } = useAuthContext();
-  const router = useRouter();
-  const [newWorkspaceTitle, setNewWorkspaceTitle] = useState("");
+// Skeleton component for loading states
+const SkeletonItem = () => (
+    <div className="h-8 bg-slate-700/50 rounded-md animate-pulse" />
+);
 
-  const {
-    activeWorkspaceId,
-    setAcctiveWorkspaceId,
-    workspaces,
-    setWorkspaces,
-    loadingWorkspaces,
-    createWorkspace,
-    loadingCreateWorkspace,
-  } = useWorkspaceContext();
+export default function WorkspaceSidebar() {
+    const { workspaces, activeWorkspace, workspacesState } = useWorkspaceContext();
+    const { boards, activeBoardId, boardsState } = useBoardContext();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const router = useRouter();
 
-  const handleCreateWorkspace = async () => {
-    const newWorkspace = await createWorkspace(newWorkspaceTitle);
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
-    if (!newWorkspace) return;
-    setNewWorkspaceTitle("");
-    router.push(`/workspaces/${newWorkspace.id}`);
-  };
+    const handleWorkspaceSelect = (workspaceId: string) => { 
+        setIsMenuOpen(false);
+        router.push(`/workspaces/${workspaceId}`);
+    };
+    
+    return (
+        <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between p-3">
+            {/* Boards List */}
+            <div className="flex-grow">
+                <h2 className="text-xs font-semibold text-slate-400 px-2 mb-2">BOARDS</h2>
+                <div className="space-y-1">
+                    {boardsState === 'loading' ? (
+                        <div className="space-y-2 px-2">
+                            <SkeletonItem />
+                            <SkeletonItem />
+                            <SkeletonItem />
+                        </div>
+                    ) : boards.length > 0 ? (
+                        boards.map((board) => (
+                            <Link
+                                key={board.id}
+                                href={`/workspaces/${activeWorkspace?.id}/boards/${board.id}/view`}
+                                className={cn(
+                                    "flex items-center gap-2 p-2 rounded-md text-sm font-medium transition-colors",
+                                    activeBoardId === board.id
+                                        ? "bg-indigo-600/20 text-indigo-300"
+                                        : "text-slate-300 hover:bg-slate-800/50"
+                                )}
+                            >
+                                <LayoutGrid className="w-4 h-4" />
+                                <span>{board.title}</span>
+                            </Link>
+                        ))
+                    ) : (
+                        <p className="text-sm text-slate-500 px-2">No boards yet.</p>
+                    )}
+                </div>
+                 <button className="flex items-center gap-2 p-2 mt-2 rounded-md text-sm font-medium text-slate-400 hover:bg-slate-800/50 w-full">
+                    <Plus className="w-4 h-4" />
+                    <span>New Board</span>
+                 </button>
+            </div>
 
-  return (
-    <div className="w-64 bg-gray-800 text-white p-4 flex flex-col">
-      <h2 className="text-lg font-bold mb-4">Workspaces</h2>
-      {loadingWorkspaces && <p>Loading...</p>}
-      <ul>
-        {workspaces.map((workspace) => (
-          <li key={workspace.id} className="mb-2 w-full">
-            <Link
-              href={`/workspaces/${workspace.id}`}
-              className={cn(
-                "hover:text-gray-300 w-full block",
-                activeWorkspaceId === workspace.id && "text-gray-300 bg-gray-600"
-              )}
-            >
-              {workspace.title}
-            </Link>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-auto">
-        <input
-          type="text"
-          value={newWorkspaceTitle}
-          onChange={(e) => setNewWorkspaceTitle(e.target.value)}
-          placeholder="New workspace title"
-          className="w-full p-2 rounded bg-gray-700 text-white"
-        />
-        <button
-          onClick={handleCreateWorkspace}
-          className="w-full mt-2 p-2 bg-blue-600 hover:bg-blue-700 rounded"
-        >
-          Create Workspace
-        </button>
-      </div>
-    </div>
-  );
-};
+            {/* Workspace Selector */}
+            <div className="relative" ref={menuRef}>
+                <AnimatePresence>
+                    {isMenuOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            className="absolute bottom-full left-0 right-0 mb-2 bg-slate-800 border border-slate-700 rounded-lg p-1 z-10"
+                        >
+                            <div className="flex flex-col space-y-1">
+                                {workspaces.map(workspace => (
+                                    <button
+                                        key={workspace.id}
+                                        onClick={() => handleWorkspaceSelect(workspace.id)}
+                                        className={cn(
+                                            "w-full text-left flex items-center justify-between p-2 rounded-md text-sm font-medium",
+                                            activeWorkspace?.id === workspace.id
+                                                ? "bg-slate-700/80 text-white"
+                                                : "text-slate-300 hover:bg-slate-700/50"
+                                        )}
+                                    >
+                                        <span>{workspace.title}</span>
+                                        {activeWorkspace?.id === workspace.id && <Check className="w-4 h-4" />}
+                                    </button>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
-export default WorkspaceSidebar;
+                <button
+                    onClick={() => setIsMenuOpen(prev => !prev)}
+                    className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
+                >
+                    {workspacesState === 'loading' ? (
+                        <div className="flex items-center gap-2">
+                             <Loader2 className="w-4 h-4 animate-spin"/>
+                             <span className="text-sm font-medium text-slate-400">Loading...</span>
+                        </div>
+                    ) : activeWorkspace ? (
+                        <div className="flex items-center gap-2 overflow-hidden">
+                            <div className="w-6 h-6 rounded-md bg-indigo-600 flex-shrink-0"></div>
+                            <span className="text-sm font-semibold text-white truncate">{activeWorkspace.title}</span>
+                        </div>
+                    ) : (
+                         <span className="text-sm font-medium text-slate-400">No workspace</span>
+                    )}
+                    <ChevronsUpDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                </button>
+            </div>
+        </aside>
+    );
+}
