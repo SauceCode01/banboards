@@ -88,58 +88,62 @@ const KanbanBoardInner: React.FC = () => {
   }
 
  function handleDragEnd(event: DragEndEvent) {
-  const { active, over } = event;
-  setActiveId(null);
+      const { active, over } = event;
+      setActiveId(null);
 
-  if (!over) return;
+      if (!over) return;
 
-  const activeId = String(active.id);
-  const overId = String(over.id);
+      const activeId = String(active.id);
+      const overId = String(over.id);
 
-  // 1. Identify Target List
-  const overTicket = tickets.find((t) => t.id === overId);
-  const targetListId = overTicket ? overTicket.list_id : overId;
+      const activeTicket = tickets.find((t) => t.id === activeId);
+      if (!activeTicket) return;
 
-  // 2. Get all tickets currently in that target list (sorted)
-  const targetListTickets = tickets
-    .filter((t) => t.list_id === targetListId)
-    .sort((a, b) => a.position - b.position);
+      // Target list: if hovering a ticket, use its list; otherwise treat the droppable list id
+      const overTicket = tickets.find((t) => t.id === overId);
+      const targetListId = overTicket ? overTicket.list_id : overId;
 
-  let afterId: string = "start";
+      // Tickets in target list sorted by position
+      const targetListTickets = tickets
+        .filter((t) => t.list_id === targetListId)
+        .sort((a, b) => a.position - b.position);
 
-  if (overTicket) {
-    const overIndex = targetListTickets.findIndex((t) => t.id === overId);
-    const activeIndex = targetListTickets.findIndex((t) => t.id === activeId);
-
-    // Check if we are moving within the same list and dragging DOWN
-    const isMovingDown = activeIndex !== -1 && activeIndex < overIndex;
-
-    if (isMovingDown) {
-      // If moving down: we want to land AFTER the target ticket to take its place
-      afterId = overId;
-    } else {
-      // If moving up OR moving from a different list:
-      // We want to land BEFORE the target. To do that, we find the ticket 
-      // currently above the target.
-      if (overIndex === 0) {
-        afterId = "start";
+      // Determine intended drop index
+      let dropIndex: number;
+      if (!overTicket) {
+        dropIndex = targetListTickets.length; // end of list
       } else {
-        afterId = targetListTickets[overIndex - 1].id;
+        const overIndex = targetListTickets.findIndex((t) => t.id === overId);
+        const activeIndexInTarget = targetListTickets.findIndex((t) => t.id === activeId);
+        const movingDown = activeIndexInTarget !== -1 && activeIndexInTarget < overIndex;
+        dropIndex = movingDown ? overIndex + 1 : overIndex;
       }
+
+      // Compute new position by averaging neighbors
+      const leftPos = dropIndex - 1 >= 0 ? targetListTickets[dropIndex - 1]?.position : undefined;
+      const rightPos = dropIndex < targetListTickets.length ? targetListTickets[dropIndex]?.position : undefined;
+
+      let newPosition: number;
+      if (leftPos === undefined && rightPos === undefined) {
+        newPosition = 0; // empty list
+      } else if (leftPos === undefined && rightPos !== undefined) {
+        newPosition = rightPos - 1; // before first
+      } else if (leftPos !== undefined && rightPos === undefined) {
+        newPosition = leftPos + 1; // after last
+      } else {
+        newPosition = (leftPos! + rightPos!) / 2; // between neighbors
+      }
+
+      // Avoid redundant update
+      if (activeTicket.list_id === targetListId && activeTicket.position === newPosition) {
+        return;
+      }
+
+      void updateTicketDetails(activeId, {
+        list_id: targetListId,
+        position: newPosition,
+      } as any);
     }
-  } else {
-    // Dropped on the list container background (not on a ticket)
-    // Place at the very end of the list
-    afterId = targetListTickets.length > 0 
-      ? targetListTickets[targetListTickets.length - 1].id 
-      : "start";
-  }
-
-  // Final Guard: If the calculation says "place after myself", do nothing.
-  if (activeId === afterId) return;
-
-  void reorderTickets(activeId, targetListId, afterId);
-}
   function handleDragCancel() {
     setActiveId(null);
   }

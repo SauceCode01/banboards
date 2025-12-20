@@ -88,18 +88,31 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     id: string,
     updates: TablesUpdate<"ticket">
   ) {
-    const updated : TablesUpdate<"ticket"> = { ...updates };
+    const updated: TablesUpdate<"ticket"> = { ...updates };
+
+    setTickets((prev) => {
+      const newTickets = prev.map((ticket, i) => {
+        if (ticket.id == id)
+          return {
+            ...ticket,
+            ...updates,
+          };
+        else return ticket;
+      });
+      return newTickets;
+    });
+
     try {
       const { error, data } = await supabase
         .from("ticket")
         .update({
           ...updated,
-          deadline: updated.deadline || null
+          deadline: updated.deadline || null,
         })
         .eq("id", id)
         .select()
         .single();
-        console.log("update ticket result", { error, data });
+      console.log("update ticket result", { error, data });
       if (error || !data) throw error || new Error("Update failed");
       const committed = data as Tables<"ticket">;
       setTickets((prev) => prev.map((t) => (t.id === id ? committed : t)));
@@ -219,10 +232,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
         { event: "INSERT", schema: "public", table: "ticket" },
         (payload) => {
           console.log("ticket inserted", payload);
-          setTickets((prev) => [
-            ...prev,
-            payload.new as Tables<"ticket">,
-          ]);
+          setTickets((prev) => [...prev, payload.new as Tables<"ticket">]);
         }
       );
 
