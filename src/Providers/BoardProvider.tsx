@@ -14,6 +14,7 @@ import {
 import { dtoast } from "@/lib/utils";
 import { QueryState } from "@/types/query.types";
 import { useWorkspaceContext } from "./WorkspaceProvider";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 type CreateBoardType = (
   title: string,
@@ -67,22 +68,51 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
   const [updateBoardState, setUpdateBoardState] = useState<QueryState>("idle");
 
   useEffect(() => {
-    const channelA = supabase
-      .channel("schema-db-changes")
-      .on(
+    let channel: RealtimeChannel;
+
+    const setupChannel = async () => {
+      channel = supabase.channel("schema-db-changes-board");
+
+      // handle insert
+      channel.on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-        },
+        { event: "INSERT", schema: "public", table: "board" },
         (payload) => {
-          console.log("SUPABASE REALTIME DETECTED WOW", payload);
+          console.log("board inserted", payload);
+          setBoards((prev) => [...prev, payload.new as Tables<"board">]);
         }
-      )
-      .subscribe();
+      );
+
+      // handle update
+      channel.on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "board" },
+        (payload) => {
+          console.log("board updated", payload);
+          setBoards((prev) =>
+            prev.map((w) =>
+              w.id === payload.new.id ? (payload.new as Tables<"board">) : w
+            )
+          );
+        }
+      );
+
+      // handle deleete
+      channel.on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "board" },
+        (payload) => {
+          console.log("board deleted", payload);
+          setBoards((prev) => prev.filter((w) => w.id !== payload.old.id));
+        }
+      );
+
+      channel.subscribe();
+    };
+    setupChannel();
 
     return () => {
-      void supabase.removeChannel(channelA);
+      void supabase.removeChannel(channel);
     };
   }, []);
 

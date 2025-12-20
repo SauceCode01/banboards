@@ -48,6 +48,12 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
+
+  /**
+   * IMPLEMENTING REALTIME CAPABILITIES 
+   */
+
+
   useEffect(() => {
     let mounted = true;
     async function load() {
