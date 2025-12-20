@@ -1,14 +1,14 @@
 "use client";
 
-import { useBoardContext } from "@/Providers/BoardProvider";
-import BoardCard from "@/components/widgets/boards/BoardCard";
+import { useBoardContext } from "@/Providers/BoardProvider"; 
 import { useState } from "react";
-import Link from "next/link";
-import WorkspaceDropdown from "@/components/features/workspace/WorkspaceDropdown";
-import Modal from "@/components/ui/Modal";
-import NewBoard from "@/components/features/board/NewBoard";
-import CollaboratorsModal from "@/components/features/workspace/CollaboratorsModal";
+import Link from "next/link"; 
+import Modal from "@/components/ui/Modal"; 
 import { useParams } from "next/navigation";
+import WorkspaceDropdown from "@/components/workspaces/WorkspaceDropdown";
+import CollaboratorsModal from "@/components/workspaces/CollaboratorsModal";
+import NewBoard from "@/components/boards/NewBoard";
+import BoardCard from "@/components/boards/BoardCard";
 
 const BoardsPage = () => {
   const { boards, boardsState } = useBoardContext();

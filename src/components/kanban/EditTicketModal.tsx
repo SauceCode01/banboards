@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Modal from "@/components/ui/Modal";
-import type { Ticket } from "./types";
+import type { Ticket } from "./kanban.types";
 
 interface EditTicketModalProps {
   ticket: Ticket | null;

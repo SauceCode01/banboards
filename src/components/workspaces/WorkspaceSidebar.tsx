@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { ChevronsUpDown, Check, LayoutGrid, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Modal from "@/components/ui/Modal";
-import NewBoard from "@/components/features/board/NewBoard";
+import NewBoard from "@/components/boards/NewBoard";
 
 // Skeleton component for loading states
 const SkeletonItem = () => (

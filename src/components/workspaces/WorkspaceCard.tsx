@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Modal from "@/components/ui/Modal";
-import WorkspaceSettings from "@/components/features/workspace/WorkspaceSettings";
+import WorkspaceSettings from "./WorkspaceSettings";
 
 interface WorkspaceCardProps {
   workspace: Tables<"workspace">;

@@ -1,5 +1,5 @@
-"use client";
-import { KanbanBoard } from '@/components/widgets/Kanban/Board';
+"use client"; 
+import KanbanBoard from '@/components/kanban/Board';
 import { useParams } from 'next/navigation';
 import React from 'react'
 

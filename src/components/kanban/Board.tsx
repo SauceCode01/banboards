@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { BoardList } from "./BoardList";
-import type { Ticket } from "./types";
+import type { Ticket } from "./kanban.types";
 import { TicketContent } from "./Ticket";
 import AddTicketModal from "./AddTicketModal";
 import EditTicketModal from "./EditTicketModal";

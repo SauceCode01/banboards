@@ -1,11 +1,11 @@
 "use client";
 
-import { useWorkspaceContext } from "@/Providers/WorkspaceProvider";
-import WorkspaceCard from "@/components/widgets/workspaces/WorkspaceCard";
+import { useWorkspaceContext } from "@/Providers/WorkspaceProvider"; 
 import Link from "next/link";
 import { useState } from "react";
-import Modal from "@/components/ui/Modal";
-import NewWorkspace from "@/components/features/workspace/NewWorkspace";
+import Modal from "@/components/ui/Modal"; 
+import NewWorkspace from "@/components/workspaces/NewWorkspace";
+import WorkspaceCard from "@/components/workspaces/WorkspaceCard";
 
 const WorkspacesPage = () => {
   const { workspaces, workspacesState } = useWorkspaceContext();

@@ -1,12 +1,12 @@
 "use client";
-
-import PublicNavbar from "@/components/widgets/PublicNavbar";
+ 
 import { motion } from "framer-motion";
 import { Users, LayoutDashboard, ListTodo, ArrowRight } from "lucide-react";
 import React from "react";
 import { twMerge } from "tailwind-merge";
 import { clsx } from "clsx";
 import { cn } from "@/lib/utils";
+import PublicNavbar from "@/components/ui/PublicNavbar";
  
 
 const KanbanVisual = () => {

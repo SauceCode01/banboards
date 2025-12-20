@@ -22,7 +22,7 @@ const NewWorkspace = ({ onClose }: NewWorkspaceProps) => {
       );
       if (newWorkspace) {
         onClose();
-        router.push(`/workspaces/${newWorkspace.id}/boards`);
+        // router.push(`/workspaces/${newWorkspace.id}/boards`);
       }
     }
   };

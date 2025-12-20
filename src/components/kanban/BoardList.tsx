@@ -2,7 +2,7 @@
 import React from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import type { List, Ticket } from "./types";
+import type { List, Ticket } from "./kanban.types";
 import { TicketCard } from "./Ticket";
 
 interface BoardListProps {

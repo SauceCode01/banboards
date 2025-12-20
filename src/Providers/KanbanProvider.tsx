@@ -11,7 +11,7 @@ import type { Tables, TablesInsert } from "@/types/database.types";
 import type {
   List as UIList,
   Ticket as UITicket,
-} from "@/components/widgets/Kanban/types";
+} from "@/components/kanban/kanban.types";
 import { useBoardContext } from "./BoardProvider";
 
 export interface KanbanContextType {
