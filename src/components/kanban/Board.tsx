@@ -87,42 +87,59 @@ const KanbanBoardInner: React.FC = () => {
     const _overId = over.id as UniqueIdentifier;
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over) return;
+ function handleDragEnd(event: DragEndEvent) {
+  const { active, over } = event;
+  setActiveId(null);
 
-    const activeId = String(active.id);
-    const overId = String(over.id);
+  if (!over) return;
 
-    const activeTicket = tickets.find((t) => t.id === activeId);
-    if (!activeTicket) return;
+  const activeId = String(active.id);
+  const overId = String(over.id);
 
-    const overIsList = lists.some((l) => l.id === overId);
+  // 1. Identify Target List
+  const overTicket = tickets.find((t) => t.id === overId);
+  const targetListId = overTicket ? overTicket.list_id : overId;
 
-    const targetListId = overIsList
-      ? overId
-      : tickets.find((t) => t.id === overId)?.list_id;
-    if (!targetListId) return;
+  // 2. Get all tickets currently in that target list (sorted)
+  const targetListTickets = tickets
+    .filter((t) => t.list_id === targetListId)
+    .sort((a, b) => a.position - b.position);
 
-    const listTickets = tickets
-      .filter((t) => t.list_id === targetListId)
-      .sort((a, b) => a.position - b.position);
+  let afterId: string = "start";
 
-    const currentlyInTarget = listTickets.find((t) => t.id === activeId);
+  if (overTicket) {
+    const overIndex = targetListTickets.findIndex((t) => t.id === overId);
+    const activeIndex = targetListTickets.findIndex((t) => t.id === activeId);
 
-    const overIndex = overIsList
-      ? listTickets.length
-      : listTickets.findIndex((t) => t.id === overId);
+    // Check if we are moving within the same list and dragging DOWN
+    const isMovingDown = activeIndex !== -1 && activeIndex < overIndex;
 
-    const activeIndex = currentlyInTarget
-      ? listTickets.findIndex((t) => t.id === activeId)
-      : listTickets.length;
-
-    const newIndex = overIndex < 0 ? listTickets.length - 1 : overIndex;
-    
-    void reorderTickets(activeId, targetListId, newIndex);
-    setActiveId(null);
+    if (isMovingDown) {
+      // If moving down: we want to land AFTER the target ticket to take its place
+      afterId = overId;
+    } else {
+      // If moving up OR moving from a different list:
+      // We want to land BEFORE the target. To do that, we find the ticket 
+      // currently above the target.
+      if (overIndex === 0) {
+        afterId = "start";
+      } else {
+        afterId = targetListTickets[overIndex - 1].id;
+      }
+    }
+  } else {
+    // Dropped on the list container background (not on a ticket)
+    // Place at the very end of the list
+    afterId = targetListTickets.length > 0 
+      ? targetListTickets[targetListTickets.length - 1].id 
+      : "start";
   }
+
+  // Final Guard: If the calculation says "place after myself", do nothing.
+  if (activeId === afterId) return;
+
+  void reorderTickets(activeId, targetListId, afterId);
+}
   function handleDragCancel() {
     setActiveId(null);
   }

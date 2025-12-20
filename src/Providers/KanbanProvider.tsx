@@ -7,16 +7,22 @@ import React, {
   useState,
 } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
-import type { Tables, TablesInsert } from "@/types/database.types";
+import type {
+  Tables,
+  TablesInsert,
+  TablesUpdate,
+} from "@/types/database.types";
 import type {
   List as UIList,
   Ticket as UITicket,
 } from "@/components/kanban/kanban.types";
 import { useBoardContext } from "./BoardProvider";
+import { RealtimeChannel } from "@supabase/supabase-js";
+import { useQuery } from "@tanstack/react-query";
 
 export interface KanbanContextType {
-  lists: UIList[];
-  tickets: UITicket[];
+  lists: Tables<"list">[];
+  tickets: Tables<"ticket">[];
   createTicket: (ticket: Omit<UITicket, "id">) => Promise<void>;
   updateTicketDetails: (
     id: string,
@@ -25,7 +31,7 @@ export interface KanbanContextType {
   reorderTickets: (
     ticketId: string,
     newListId: string,
-    newPosition: number
+    afterId: string
   ) => Promise<void>;
 }
 
@@ -40,102 +46,27 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const { activeBoardId } = useBoardContext();
 
-  const [lists, setLists] = useState<UIList[]>([]);
-  const [tickets, setTickets] = useState<UITicket[]>([]);
+  const [lists, setLists] = useState<Tables<"list">[]>([]);
+  const [tickets, setTickets] = useState<Tables<"ticket">[]>([]);
 
-  const [committedLists, setCommittedLists] = useState<Tables<"list">[]>([]);
-  const [committedTickets, setCommittedTickets] = useState<Tables<"ticket">[]>(
-    []
-  );
-
-
-  /**
-   * IMPLEMENTING REALTIME CAPABILITIES 
-   */
-
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["kanbanData", activeBoardId],
+    queryFn: async () => fetchBoardData(activeBoardId!),
+    enabled: !!activeBoardId,
+  });
 
   useEffect(() => {
-    let mounted = true;
-    async function load() {
-      if (!activeBoardId) {
-        if (mounted) {
-          setLists([]);
-          setTickets([]);
-          setCommittedLists([]);
-          setCommittedTickets([]);
-        }
-        return;
-      }
-
-      const { data: listRows, error: listErr } = await supabase
-        .from("list")
-        .select("*")
-        .eq("board_id", activeBoardId)
-        .order("position", { ascending: true });
-
-      if (listErr || !listRows) {
-        if (mounted) {
-          setLists([]);
-          setCommittedLists([]);
-        }
-        return;
-      }
-
-      const listIds = listRows.map((l) => l.id);
-      const { data: ticketRows } = await supabase
-        .from("ticket")
-        .select("*")
-        .in("list_id", listIds.length ? listIds : ["__none__"])
-        .order("position", { ascending: true });
-
-      if (mounted) {
-        const uiLists: UIList[] = listRows.map((l) => ({
-          id: l.id,
-          board_id: 0,
-          title: l.title,
-          position: l.position,
-        }));
-        const uiTickets: UITicket[] = (ticketRows || []).map((t) => ({
-          id: t.id,
-          list_id: t.list_id,
-          position: t.position,
-          title: t.title,
-          description: t.description || "",
-          deadline: t.deadline || "",
-        }));
-        setCommittedLists(listRows);
-        setCommittedTickets(ticketRows || []);
-        setLists(uiLists);
-        setTickets(uiTickets);
-      }
+    if (data) {
+      setLists(data.lists);
+      setTickets(data.tickets);
     }
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [activeBoardId]);
+  }, [data]);
 
-  async function createTicket(input: Omit<UITicket, "id">) {
-    const listTickets = tickets
-      .filter((t) => t.list_id === input.list_id)
-      .sort((a, b) => a.position - b.position);
-    const position =
-      typeof input.position === "number" ? input.position : listTickets.length;
-    const tempId = `tmp_${uid()}`;
-    const optimistic: UITicket = {
-      id: tempId,
-      list_id: input.list_id,
-      position,
-      title: input.title,
-      description: input.description || "",
-      deadline: input.deadline || "",
-    };
-    setTickets((prev) => [...prev, optimistic]);
-
+  async function createTicket(input: TablesInsert<"ticket">) {
     try {
       const insert: TablesInsert<"ticket"> = {
         list_id: input.list_id,
-        position,
+        position: tickets.length,
         title: input.title,
         description: input.description || null,
         deadline: input.deadline || null,
@@ -147,233 +78,116 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
         .single();
       if (error || !data) throw error || new Error("Insert failed");
       const committed = data as Tables<"ticket">;
-      setCommittedTickets((prev) => [...prev, committed]);
-      setTickets((prev) =>
-        prev.map((t) =>
-          t.id === tempId
-            ? {
-                id: committed.id,
-                list_id: committed.list_id,
-                position: committed.position,
-                title: committed.title,
-                description: committed.description || "",
-                deadline: committed.deadline || "",
-              }
-            : t
-        )
-      );
+      setTickets((prev) => [...prev, committed]);
     } catch (e) {
-      setTickets(
-        committedTickets.map((t) => ({
-          id: t.id,
-          list_id: t.list_id,
-          position: t.position,
-          title: t.title,
-          description: t.description || "",
-          deadline: t.deadline || "",
-        }))
-      );
+      console.log("An error occured while creating a ticket: ", input);
     }
   }
 
   async function updateTicketDetails(
     id: string,
-    updates: Partial<Pick<UITicket, "title" | "description" | "deadline">>
+    updates: TablesUpdate<"ticket">
   ) {
-    setTickets((prev) =>
-      prev.map((t) =>
-        t.id === id
-          ? {
-              ...t,
-              ...(updates.title !== undefined ? { title: updates.title } : {}),
-              ...(updates.description !== undefined
-                ? { description: updates.description ?? "" }
-                : {}),
-              ...(updates.deadline !== undefined
-                ? { deadline: updates.deadline ?? "" }
-                : {}),
-            }
-          : t
-      )
-    );
-
-    const existsOnServer = committedTickets.some((t) => t.id === id);
-    if (!existsOnServer) return;
-
+    const updated : TablesUpdate<"ticket"> = { ...updates };
     try {
-      const dbDescription =
-        updates.description !== undefined
-          ? updates.description === ""
-            ? null
-            : updates.description
-          : undefined;
-      const dbDeadline =
-        updates.deadline !== undefined
-          ? updates.deadline === ""
-            ? null
-            : updates.deadline
-          : undefined;
-
       const { error, data } = await supabase
         .from("ticket")
         .update({
-          ...(updates.title !== undefined ? { title: updates.title } : {}),
-          ...(updates.description !== undefined ? { description: dbDescription } : {}),
-          ...(updates.deadline !== undefined ? { deadline: dbDeadline } : {}),
+          ...updated,
+          deadline: updated.deadline || null
         })
         .eq("id", id)
         .select()
         .single();
+        console.log("update ticket result", { error, data });
       if (error || !data) throw error || new Error("Update failed");
       const committed = data as Tables<"ticket">;
-      setCommittedTickets((prev) =>
-        prev.map((t) => (t.id === id ? committed : t))
-      );
+      setTickets((prev) => prev.map((t) => (t.id === id ? committed : t)));
     } catch (e) {
-      setTickets(
-        committedTickets.map((t) => ({
-          id: t.id,
-          list_id: t.list_id,
-          position: t.position,
-          title: t.title,
-          description: t.description || "",
-          deadline: t.deadline || "",
-        }))
-      );
+      console.log("An error occured while updating a ticket: ", updates);
     }
   }
 
   async function reorderTickets(
     ticketId: string,
     newListId: string,
-    newPosition: number
+    afterId: string
   ) {
-    console.log("REORDER TICKETS", ticketId, newListId, newPosition);
-    const current = tickets.map((t) => ({ ...t }));
-    const moved = current.find((t) => t.id === ticketId);
-    if (!moved) return;
-    const sourceListId = moved.list_id;
-    // Reorder within the same list
-    if (sourceListId === newListId) {
-      console.log("REORDER WITHIN SAME LIST");
-      const sameList = current
-        .filter((t) => t.list_id === sourceListId && t.id !== ticketId)
-        .sort((a, b) => a.position - b.position);
-      const insertIndex = Math.max(
-        0,
-        Math.min(Math.floor(newPosition), sameList.length)
-      );
-      const reordered = [
-        ...sameList.slice(0, insertIndex),
-        { ...moved },
-        ...sameList.slice(insertIndex),
-      ];
-      reordered.forEach((t, idx) => (t.position = idx));
-      const others = current.filter((t) => t.list_id !== sourceListId);
-      setTickets([...others, ...reordered]);
-
-      const changed = reordered.map((t) => ({
-        id: t.id,
-        list_id: t.list_id,
-        position: t.position,
-        title: t.title,
-        description: t.description || "", 
-      }));
-      const tempMove = !committedTickets.some((t) => t.id === ticketId);
-      if (tempMove) return;
-      console.log("before DATABASE STUFF SAME LIST");
-      console.log(changed);
-      try {
-        const { error, data } = await supabase
-          .from("ticket")
-          .upsert(changed)
-          .select();
-        console.log(error, data, "REORDERRRRRRR SAME LIST");
-        if (error) throw error;
-        const updated = (data || []) as Tables<"ticket">[];
-        setCommittedTickets((prev) => {
-          const map = new Map(prev.map((t) => [t.id, t]));
-          updated.forEach((u) => map.set(u.id, u));
-          return Array.from(map.values());
-        });
-      } catch (e) {
-        setTickets(
-          committedTickets.map((t) => ({
-            id: t.id,
-            list_id: t.list_id,
-            position: t.position,
-            title: t.title,
-            description: t.description || "",
-            deadline: t.deadline || "",
-          }))
-        );
-      }
+    console.log(
+      "reorder tickets",
+      ticketId,
+      newListId,
+      afterId,
+      tickets,
+      lists
+    );
+    const newList = lists.find((list) => list.id === newListId);
+    if (!newList) {
+      console.log("reorder to an invalid list");
       return;
     }
 
-    // Move across different lists
-    const source = current
-      .filter((t) => t.list_id === sourceListId && t.id !== ticketId)
+    const newListTickets = tickets
+      .filter((ticket) => ticket.list_id === newList.id)
       .sort((a, b) => a.position - b.position);
-    const target = current
-      .filter((t) => t.list_id === newListId && t.id !== ticketId)
-      .sort((a, b) => a.position - b.position);
-    const insertIndex = Math.max(
-      0,
-      Math.min(Math.floor(newPosition), target.length)
-    );
-    const newTarget = [
-      ...target.slice(0, insertIndex),
-      { ...moved, list_id: newListId },
-      ...target.slice(insertIndex),
-    ];
 
-    source.forEach((t, idx) => (t.position = idx));
-    newTarget.forEach((t, idx) => (t.position = idx));
+    // calculating left and right position to average the new position of the ticket
+    let leftPosition = 0;
+    let rightPosition = 0;
+    if (afterId == "start") leftPosition = newListTickets[0]?.position - 1 || 0;
+    else {
+      let leftIndex;
+      const leftItem = newListTickets.find((ticket, i) => {
+        if (ticket.id == afterId) {
+          leftIndex = i;
+          return true;
+        }
+      });
+      if (!leftItem || !leftIndex) {
+        console.log("invalid after id");
+        return;
+      }
+      leftPosition = leftItem.position;
 
-    const nextUI = current
-      .filter((t) => t.list_id !== sourceListId && t.list_id !== newListId)
-      .concat(source)
-      .concat(newTarget);
-    setTickets(nextUI);
+      if (leftIndex + 1 >= newListTickets.length)
+        rightPosition = leftPosition + 1;
+      else rightPosition = newListTickets[leftIndex + 1].position;
+    }
 
-    const changed = [...source, ...newTarget].map((t) => ({
-      id: t.id,
-      list_id: t.list_id,
-      position: t.position,
-      title: t.title,
-      description: t.description || "",
-    }));
-    const tempMove = !committedTickets.some((t) => t.id === ticketId);
-    if (tempMove) return;
+    const newTicketPosition = (leftPosition + rightPosition) / 2;
 
-    console.log("before DATABASE STUFF")
+    setTickets((prev) => {
+      const newTickets = prev.map((ticket, i) => {
+        if (ticket.id == ticketId)
+          return {
+            ...ticket,
+            list_id: newListId,
+            position: newTicketPosition,
+          };
+        else return ticket;
+      });
+      return newTickets;
+    });
 
     try {
+      const update: TablesUpdate<"ticket"> = {
+        list_id: newListId,
+        position: newTicketPosition,
+      };
+      console.log("updating ticket position", update);
+
       const { error, data } = await supabase
         .from("ticket")
-        .upsert(changed)
-        .select();
+        .update(update)
+        .eq("id", ticketId)
+        .select()
+        .single();
 
-        console.log(error, data, "REORDERRRRRRR");
+      console.log("reorder result", { error, data });
       if (error) throw error;
-      const updated = (data || []) as Tables<"ticket">[];
-      setCommittedTickets((prev) => {
-        const map = new Map(prev.map((t) => [t.id, t]));
-        updated.forEach((u) => map.set(u.id, u));
-        return Array.from(map.values());
-      });
+      const updated = data as Tables<"ticket">;
     } catch (e) {
-      setTickets(
-        committedTickets.map((t) => ({
-          id: t.id,
-          list_id: t.list_id,
-          position: t.position,
-          title: t.title,
-          description: t.description || "",
-          deadline: t.deadline || "",
-        }))
-      );
+      console.log("failed to reorder a ticket. ", e);
     }
   }
 
@@ -385,8 +199,66 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       updateTicketDetails,
       reorderTickets,
     }),
-    [lists, tickets, committedTickets]
+    [lists, tickets, tickets]
   );
+
+  /**
+   * REALTIME LISTENERS FOR KANBAN DATA
+   */
+  useEffect(() => {
+    let channel: RealtimeChannel;
+
+    const setupChannel = async () => {
+      await supabase.realtime.setAuth();
+
+      channel = supabase.channel("schema-db-changes-ticket");
+
+      // handle insert
+      channel.on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "ticket" },
+        (payload) => {
+          console.log("ticket inserted", payload);
+          setTickets((prev) => [
+            ...prev,
+            payload.new as Tables<"ticket">,
+          ]);
+        }
+      );
+
+      // handle update
+      channel.on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "ticket" },
+        (payload) => {
+          console.log("ticket updated", payload);
+          setTickets((prev) =>
+            prev.map((w) =>
+              w.id === payload.new.id ? (payload.new as Tables<"ticket">) : w
+            )
+          );
+        }
+      );
+
+      // handle deleete
+      channel.on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "ticket" },
+        (payload) => {
+          console.log("ticket deleted", payload);
+          setTickets((prev) => prev.filter((w) => w.id !== payload.old.id));
+        }
+      );
+
+      channel.subscribe();
+    };
+
+    setupChannel();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  });
 
   return (
     <KanbanContext.Provider value={value}>{children}</KanbanContext.Provider>
@@ -398,3 +270,35 @@ export function useKanban(): KanbanContextType {
   if (!ctx) throw new Error("useKanban must be used within a KanbanProvider");
   return ctx;
 }
+
+const fetchBoardData = async (boardId: string) => {
+  console.log("latest board id", boardId);
+  if (!boardId) {
+    return;
+  }
+  console.log("loading tickets", boardId);
+
+  const { data: listRows, error: listErr } = await supabase
+    .from("list")
+    .select("*")
+    .eq("board_id", boardId)
+    .order("position", { ascending: true });
+
+  if (listErr || !listRows) {
+    return;
+  }
+  console.log("listrows", listRows, "board", boardId);
+
+  const listIds = listRows.map((l) => l.id);
+  const { data: ticketRows } = await supabase
+    .from("ticket")
+    .select("*")
+    .in("list_id", listIds.length ? listIds : ["__none__"])
+    .order("position", { ascending: true });
+
+  console.log("list ids", listIds, "board", boardId);
+  console.log("ticket rows", ticketRows, "board", boardId);
+
+  console.log("DONEEEEEEEEEEEEEEEE", boardId);
+  return { lists: listRows, tickets: ticketRows || [] };
+};

@@ -80,6 +80,7 @@ export const WorkspaceProvider = ({
   useEffect(() => {
     if (!userProfile) return;
 
+
     const handleFetchWorkspaces = async () => {
       if (!userProfile) return;
 
