@@ -6,7 +6,7 @@ import { useEffect, useMemo } from "react";
 import Link from "next/link";
 
 const WorkspacePage = () => { 
-  const { workspaces, setAcctiveWorkspaceId, activeWorkspaceId } = useWorkspaceContext();
+  const { workspaces, activeWorkspaceId } = useWorkspaceContext();
  
 
   const workspace = useMemo(
