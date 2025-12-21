@@ -1,7 +1,6 @@
 "use client";
 
 import { useBoardContext } from "@/Providers/BoardProvider";
-import { useWorkspaceContext } from "@/Providers/WorkspaceProvider";
 import { useParams } from "next/navigation";
 import React, { useEffect } from "react";
 
@@ -9,15 +8,15 @@ type Props = {
   children: React.ReactNode;
 };
 
-export const layout = (props: Props) => {
+const BoardsLayout = (props: Props) => {
   const { boardId } = useParams<{ boardId: string }>();
-  const { boards, setActiveBoardId } = useBoardContext();
+  const { setActiveBoardId } = useBoardContext();
 
   useEffect(() => {
     setActiveBoardId(boardId);
-  }, [setActiveBoardId]);
+  }, [setActiveBoardId, boardId]);
 
   return <>{props.children}</>;
 };
 
-export default layout;
+export default BoardsLayout;

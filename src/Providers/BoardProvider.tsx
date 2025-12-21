@@ -9,18 +9,22 @@ import {
   useContext,
   useEffect,
   useState,
+  useMemo,
 } from "react";
 import { dtoast } from "@/lib/utils";
 import { QueryState } from "@/types/query.types";
 import { useWorkspaceContext } from "./WorkspaceProvider";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 type CreateBoardType = (
-  title: string
+  title: string,
+  description?: string
 ) => Promise<Tables<"board"> | undefined>;
 
 export type BoardContextType = {
   activeBoardId?: string;
   setActiveBoardId: Dispatch<SetStateAction<string | undefined>>;
+  activeBoard?: Tables<"board">;
 
   boards: Tables<"board">[];
   setBoards: Dispatch<SetStateAction<Tables<"board">[]>>;
@@ -32,7 +36,11 @@ export type BoardContextType = {
   deleteBoard: (boardId: string) => Promise<void>;
   deleteBoardState: QueryState;
 
-  updateBoard: (boardId: string, newTitle: string) => Promise<void>;
+  updateBoard: (
+    boardId: string,
+    newTitle: string,
+    newDescription?: string
+  ) => Promise<void>;
   updateBoardState: QueryState;
 };
 
@@ -46,14 +54,12 @@ export const useBoardContext = () => {
   return context;
 };
 
-export const BoardProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  const { activeWorkspaceId } = useWorkspaceContext();
+export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
+  const { activeWorkspaceId, activeWorkspace } = useWorkspaceContext();
 
-  const [activeBoardId, setActiveBoardId] = useState<string | undefined>(undefined);
+  const [activeBoardId, setActiveBoardId] = useState<string | undefined>(
+    undefined
+  );
   const [boards, setBoards] = useState<Tables<"board">[]>([]);
   const [boardsState, setBoardsState] = useState<QueryState>("idle");
 
@@ -62,8 +68,74 @@ export const BoardProvider = ({
   const [updateBoardState, setUpdateBoardState] = useState<QueryState>("idle");
 
   useEffect(() => {
+    let channel: RealtimeChannel;
+
+    const setupChannel = async () => {
+      channel = supabase.channel("schema-db-changes-board");
+
+      // handle insert
+      channel.on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "board" },
+        (payload) => {
+          console.log("board inserted", payload);
+          setBoards((prev) => {
+            // check if it already exists
+            if (prev.find((w) => w.id === payload.new.id)) return prev;
+            return [...prev, payload.new as Tables<"board">];
+          });
+        }
+      );
+
+      // handle update
+      channel.on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "board" },
+        (payload) => {
+          console.log("board updated", payload);
+          setBoards((prev) =>
+            prev.map((w) =>
+              w.id === payload.new.id ? (payload.new as Tables<"board">) : w
+            )
+          );
+        }
+      );
+
+      // handle deleete
+      channel.on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "board" },
+        (payload) => {
+          console.log("board deleted", payload);
+          setBoards((prev) => prev.filter((w) => w.id !== payload.old.id));
+        }
+      );
+
+      channel.subscribe((status, err) => {
+        if (err) {
+          console.error("Error subscribing to board changes:", err);
+        } else {
+          console.log("Subscribed to board changes with status:", status);
+        }
+      });
+    };
+    setupChannel();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // console.log(
+  //   "boards",
+  //   activeWorkspace,
+  //   boards.find((b) => b.id === activeBoardId)
+  // );
+
+  useEffect(() => {
     if (!activeWorkspaceId) {
       setBoards([]);
+      setActiveBoardId(undefined); // Clear active board if no workspace is active
       return;
     }
 
@@ -82,6 +154,7 @@ export const BoardProvider = ({
       } else if (data) {
         dtoast(`Fetched ${data.length} boards`);
         setBoards(data);
+        // Automatically select the first board of the workspace
       }
       setBoardsState("idle");
     };
@@ -89,16 +162,13 @@ export const BoardProvider = ({
     fetchBoards();
   }, [activeWorkspaceId]);
 
-  const createBoard = async (title: string) => {
-    console.log("active workspace id", activeWorkspaceId)
+  const createBoard = async (title: string, description?: string) => {
     if (!activeWorkspaceId || !title.trim()) return;
-
     setCreateBoardState("loading");
 
-    console.log("creating board...")
-
     const newBoardDTO: TablesInsert<"board"> = {
-      title: title,
+      title,
+      description,
       workspace_id: activeWorkspaceId,
     };
 
@@ -114,38 +184,63 @@ export const BoardProvider = ({
       return;
     }
 
-    setBoards((prevBoards) => [...prevBoards, newBoard]);
-    setCreateBoardState("idle");
-    dtoast("Board created successfully");
+    // Step B: Create default lists for the new board
+    const defaultLists: TablesInsert<"list">[] = [
+      { board_id: newBoard.id, title: "Backlog", position: 0 },
+      { board_id: newBoard.id, title: "Todo", position: 1 },
+      { board_id: newBoard.id, title: "In Progress", position: 2 },
+      { board_id: newBoard.id, title: "Done", position: 3 },
+    ];
 
+    const { error: listError } = await supabase
+      .from("list")
+      .insert(defaultLists);
+
+    if (listError) {
+      dtoast(
+        `Board created, but failed to create default lists: ${listError.message}`,
+        "error"
+      );
+    } else {
+      dtoast("Board and default lists created successfully");
+    }
+
+    // Step C: Update application state: add the new board; lists are fetched per-board elsewhere
+    setBoards((prevBoards) => [...prevBoards, newBoard]);
+    setActiveBoardId(newBoard.id); // Switch to the new board
+    setCreateBoardState("idle");
     return newBoard;
   };
 
   const deleteBoard = async (boardId: string) => {
     setDeleteBoardState("loading");
     dtoast("Deleting board...");
-
-    const { error } = await supabase
-      .from("board")
-      .delete()
-      .eq("id", boardId);
+    const { error } = await supabase.from("board").delete().eq("id", boardId);
 
     if (error) {
       dtoast(`Error deleting board: ${error.message}`, "error");
     } else {
-      setBoards((prev) => prev.filter((b) => b.id !== boardId));
+      const remainingBoards = boards.filter((b) => b.id !== boardId);
+      setBoards(remainingBoards);
+      // If the deleted board was the active one, switch to the first available one
+      if (activeBoardId === boardId) {
+        setActiveBoardId(remainingBoards[0]?.id);
+      }
       dtoast("Board deleted successfully");
     }
     setDeleteBoardState("idle");
   };
 
-  const updateBoard = async (boardId: string, newTitle: string) => {
+  const updateBoard = async (
+    boardId: string,
+    newTitle: string,
+    newDescription?: string
+  ) => {
     setUpdateBoardState("loading");
     dtoast("Updating board...");
-
     const { data, error } = await supabase
       .from("board")
-      .update({ title: newTitle })
+      .update({ title: newTitle, description: newDescription })
       .eq("id", boardId)
       .select()
       .single();
@@ -153,35 +248,33 @@ export const BoardProvider = ({
     if (error || !data) {
       dtoast(`Error updating board: ${error?.message}`, "error");
     } else {
-      setBoards((prev) =>
-        prev.map((b) => (b.id === boardId ? data : b))
-      );
+      setBoards((prev) => prev.map((b) => (b.id === boardId ? data : b)));
       dtoast("Board updated successfully");
     }
     setUpdateBoardState("idle");
   };
 
+  const activeBoard = useMemo(
+    () => boards.find((b) => b.id === activeBoardId),
+    [boards, activeBoardId]
+  );
+
   const value = {
     activeBoardId,
     setActiveBoardId,
-
+    activeBoard,
     boards,
     setBoards,
     boardsState,
-
     createBoard,
     createBoardState,
-
     deleteBoard,
     deleteBoardState,
-
     updateBoard,
     updateBoardState,
   };
 
   return (
-    <BoardContext.Provider value={value}>
-      {children}
-    </BoardContext.Provider>
+    <BoardContext.Provider value={value}>{children}</BoardContext.Provider>
   );
 };

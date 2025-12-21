@@ -1,15 +1,15 @@
-"use client";
-import BoardView from '@/components/features/board/BoardView';
-import Kanban from '@/components/widgets/Kanban/Kanban';
+"use client"; 
+import KanbanBoard from '@/components/kanban/Board';
 import { useParams } from 'next/navigation';
 import React from 'react'
 
 const BoardViewPage = () => {
     const { boardId } = useParams<{ boardId: string }>();
+    
     return (
-        // <BoardView boardId={boardId} />
-        // <Kanban/>
-        <div>board view</div>
+        <div className="h-full w-full bg-slate-950">
+            <KanbanBoard />
+        </div>
     )
 }
 

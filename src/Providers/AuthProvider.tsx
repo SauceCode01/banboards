@@ -2,13 +2,15 @@
 
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { Tables } from "@/types/database.types";
-import { Session } from "@supabase/supabase-js";
+import { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
-import { toast } from "react-toastify";
+
+export type AuthState = "initiating" | "authenticated" | "unauthenticated";
 
 export type AuthContextType = {
   session: Session | null;
   userProfile: Tables<"user_profile"> | null;
+  authState: AuthState;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -26,62 +28,91 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [userProfile, setUserProfile] = useState<Tables<"user_profile"> | null>(
     null
   );
+  const [authState, setAuthState] = useState<AuthState>("initiating");
+
+  // console.log("AuthProvider", { session, userProfile, authState });
 
   useEffect(() => {
-    // Fetch the initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session || null);
-    });
-  }, []);
-
-  useEffect(() => {
-    const { data: authStateListener } = supabase.auth.onAuthStateChange(
+    const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        setSession(currentSession);
+        console.log(`Auth event: ${event}`);
 
         if (currentSession) {
-          // Run the profile logic only if we have a session
-          // Using a separate function or ensuring this doesn't block the listener
-          fetchOrCreateProfile(currentSession.user);
+          // 2. Set everything at once (Batching)
+          setSession(currentSession);
+          setAuthState("authenticated");
         } else {
-          setUserProfile(null);
+          // Handle Logout
+          setSession(null);
+          setAuthState("unauthenticated");
         }
       }
     );
 
-    return () => authStateListener.subscription.unsubscribe();
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
-  // Separate the logic to keep the listener clean
-  const fetchOrCreateProfile = async (user: any) => {
-    try {
-      const { data: profile, error } = await supabase
-        .from("user_profile")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
+  useEffect(() => {
+    if (!session) {
+      setUserProfile(null);
+      return;
+    }
 
-      if (profile) {
-        setUserProfile(profile);
-        return;
-      }
+    const loadProfile = async () => {
+      const profile = await getProfileData(session.user);
+      setUserProfile(profile);
+    };
+    loadProfile();
+  }, [session]);
 
-      // Create if missing
+  const value: AuthContextType = {
+    session,
+    userProfile,
+    authState,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// Helper function just returns data, doesn't touch state
+const getProfileData = async (
+  user: User
+): Promise<Tables<"user_profile"> | null> => {
+  try {
+    // 1. Try to fetch
+    console.log("Fetching profile...", user);
+
+    const { data: profile, error } = await supabase
+      .from("user_profile")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    // console.log("Fetched profile:", profile);
+
+    if (profile) return profile;
+
+    // 2. If not found, create
+    console.log("Profile not found, creating...");
+    if (!profile && (!error || error.code === "PGRST116")) {
       const { data: newProfile, error: createError } = await supabase
         .from("user_profile")
-        .insert([{ id: user.id, username: user.email!.split("@")[0], email: user.email! }])
+        .insert([
+          {
+            id: user.id,
+            username: user.email!.split("@")[0],
+            email: user.email!,
+          },
+        ])
         .select()
         .single();
 
-      if (newProfile) setUserProfile(newProfile);
-    } catch (err) {
-      console.error("Profile sync error:", err);
+      if (newProfile) return newProfile;
     }
-  };
-
-  return (
-    <AuthContext.Provider value={{ session, userProfile }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  } catch (err) {
+    console.error("Error loading profile:", err);
+  }
+  return null;
 };
