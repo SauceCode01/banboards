@@ -17,7 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { Tables } from "@/types/database.types";
-import { SortableList } from "../dnd/SortableList";
+import { SortableList } from "../features/dnd/SortableList";
 import {
   POSITION_GAP,
   POSITION_THRESHOLD,

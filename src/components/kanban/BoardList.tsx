@@ -1,16 +1,16 @@
 "use client";
 import React from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import type { List, Ticket } from "./types";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"; 
 import { TicketCard } from "./Ticket";
+import { Tables } from "@/types/database.types";
 
 interface BoardListProps {
-  list: List;
-  tickets: Ticket[];
+  list: Tables<'list'>;
+  tickets: Tables<'ticket'>[];
   onAddTicket: (listId: string) => void;
   onDeleteTicket: (id: string) => void;
-  onOpenTicket: (t: Ticket) => void;
+  onOpenTicket: (t: Tables<'ticket'>) => void;
 }
 
 export const BoardList: React.FC<BoardListProps> = ({ list, tickets, onAddTicket, onDeleteTicket, onOpenTicket }) => {

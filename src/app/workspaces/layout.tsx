@@ -1,6 +1,5 @@
-import AuthGuard from "@/guards/AuthGuard";
-import Navbar from "@/components/widgets/Navbar";
-import WorkspaceSidebar from "@/components/features/workspace/WorkspaceSidebar";
+import Navbar from "@/components/ui/Navbar";
+import AuthGuard from "@/guards/AuthGuard"; 
 
 export default function WorkspacesLayout({
   children,

@@ -14,7 +14,8 @@ import {
 import { useAuthContext } from "./AuthProvider";
 import { QueryState } from "@/types/query.types";
 import { dtoast } from "@/lib/utils";
-import { desc } from "framer-motion/client";
+import { desc, sup } from "framer-motion/client";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 type CreateWorkspaceType = (
   title: string,
@@ -36,7 +37,11 @@ export type WorkspaceContextType = {
   deleteWorkspace: (workspaceId: string) => Promise<void>;
   deleteWorkspaceState: QueryState;
 
-  updateWorkspace: (workspaceId: string, newTitle: string, newDescription?: string) => Promise<void>;
+  updateWorkspace: (
+    workspaceId: string,
+    newTitle: string,
+    newDescription?: string
+  ) => Promise<void>;
   updateWorkspaceState: QueryState;
 };
 
@@ -78,7 +83,8 @@ export const WorkspaceProvider = ({
     const handleFetchWorkspaces = async () => {
       if (!userProfile) return;
 
-      setWorkspacesState("loading");
+      if (workspaces.length > 0) setWorkspacesState("refetch");
+      else setWorkspacesState("loading");
 
       const { data, error } = await supabase.from("workspace").select("*");
 
@@ -171,7 +177,11 @@ export const WorkspaceProvider = ({
     setDeleteWorkspaceState("idle");
   };
 
-  const updateWorkspace = async (workspaceId: string, newTitle: string, newDescription?: string) => {
+  const updateWorkspace = async (
+    workspaceId: string,
+    newTitle: string,
+    newDescription?: string
+  ) => {
     setUpdateWorkspaceState("loading");
     dtoast("Updating workspace...");
     const { data, error } = await supabase
@@ -191,6 +201,63 @@ export const WorkspaceProvider = ({
     }
     setUpdateWorkspaceState("idle");
   };
+
+  /**
+   * REALTIME LISTENERS FOR WORKSPACE
+   */
+  useEffect(() => {
+    let channel: RealtimeChannel;
+
+    const setupChannel = async () => {
+      channel = supabase.channel("schema-db-changes");
+
+      // handle insert
+      channel.on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "workspace" },
+        (payload) => {
+          console.log("workspace inserted", payload);
+          setWorkspaces((prev) => {
+            // check if it already exists
+            if (prev.find((w) => w.id === payload.new.id)) return prev;
+            return [...prev, payload.new as Tables<"workspace">];
+          });
+        }
+      );
+
+      // handle update
+      channel.on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "workspace" },
+        (payload) => {
+          console.log("workspace updated", payload);
+          setWorkspaces((prev) =>
+            prev.map((w) =>
+              w.id === payload.new.id ? (payload.new as Tables<"workspace">) : w
+            )
+          );
+        }
+      );
+
+      // handle deleete
+      channel.on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "workspace" },
+        (payload) => {
+          console.log("workspace deleted", payload);
+          setWorkspaces((prev) => prev.filter((w) => w.id !== payload.old.id));
+        }
+      );
+
+      channel.subscribe();
+    };
+
+    setupChannel();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
 
   const activeWorkspace = useMemo(
     () => workspaces.find((w) => w.id === activeWorkspaceId),

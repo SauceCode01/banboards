@@ -4,8 +4,8 @@ import { useBoardContext } from "@/Providers/BoardProvider";
 import { Tables } from "@/types/database.types";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
-import Modal from "@/components/ui/Modal";
-import BoardSettings from "@/components/features/board/BoardSettings";
+import Modal from "@/components/ui/Modal"; 
+import BoardSettings from "./BoardSettings";
 
 interface BoardCardProps {
   board: Tables<"board">;

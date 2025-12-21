@@ -14,12 +14,12 @@ import {
   DragOverlay,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { BoardList } from "./BoardList";
-import type { Ticket } from "./types";
+import { BoardList } from "./BoardList"; 
 import { TicketContent } from "./Ticket";
 import AddTicketModal from "./AddTicketModal";
 import EditTicketModal from "./EditTicketModal";
 import { KanbanProvider, useKanban } from "@/Providers/KanbanProvider";
+import { Tables } from "@/types/database.types";
 
 const KanbanBoardInner: React.FC = () => {
   const { lists, tickets, createTicket, updateTicketDetails, reorderTickets } =
@@ -27,7 +27,7 @@ const KanbanBoardInner: React.FC = () => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addListId, setAddListId] = useState<string | null>(null);
-  const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
+  const [editingTicket, setEditingTicket] = useState<Tables<'ticket'> | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, {
@@ -36,7 +36,7 @@ const KanbanBoardInner: React.FC = () => {
   );
 
   const ticketsByList = useMemo(() => {
-    const map: Record<string, Ticket[]> = {};
+    const map: Record<string, Tables<'ticket'>[]> = {};
     for (const list of lists) map[list.id] = [];
     for (const t of tickets) {
       if (!map[t.list_id]) map[t.list_id] = [];
@@ -87,42 +87,71 @@ const KanbanBoardInner: React.FC = () => {
     const _overId = over.id as UniqueIdentifier;
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over) return;
+ function handleDragEnd(event: DragEndEvent) {
+      const { active, over } = event;
+      setActiveId(null);
 
-    const activeId = String(active.id);
-    const overId = String(over.id);
+      if (!over) return;
 
-    const activeTicket = tickets.find((t) => t.id === activeId);
-    if (!activeTicket) return;
+      const activeId = String(active.id);
+      const overId = String(over.id);
 
-    const overIsList = lists.some((l) => l.id === overId);
+      const activeTicket = tickets.find((t) => t.id === activeId);
+      if (!activeTicket) return;
 
-    const targetListId = overIsList
-      ? overId
-      : tickets.find((t) => t.id === overId)?.list_id;
-    if (!targetListId) return;
+      // Target list: if hovering a ticket, use its list; otherwise treat the droppable list id
+      const overTicket = tickets.find((t) => t.id === overId);
+      const targetListId = overTicket ? overTicket.list_id : overId;
 
-    const listTickets = tickets
-      .filter((t) => t.list_id === targetListId)
-      .sort((a, b) => a.position - b.position);
+      // Tickets in target list sorted by position
+      const targetListTickets = tickets
+        .filter((t) => t.list_id === targetListId)
+        .sort((a, b) => a.position - b.position);
 
-    const currentlyInTarget = listTickets.find((t) => t.id === activeId);
+      // Determine intended drop index
+      let dropIndex: number;
+      if (!overTicket) {
+        dropIndex = targetListTickets.length; // end of list
+      } else {
+        const overIndex = targetListTickets.findIndex((t) => t.id === overId);
+        const activeIndexInTarget = targetListTickets.findIndex((t) => t.id === activeId);
+        const movingDown = activeIndexInTarget !== -1 && activeIndexInTarget < overIndex;
 
-    const overIndex = overIsList
-      ? listTickets.length
-      : listTickets.findIndex((t) => t.id === overId);
+        if (activeIndexInTarget === -1) {
+          // Moving from another list: if hovering last ticket, place after it for easier drop-to-end
+          const isOverLast = overIndex === targetListTickets.length - 1;
+          dropIndex = isOverLast ? targetListTickets.length : overIndex;
+        } else {
+          // Same-list behavior
+          dropIndex = movingDown ? overIndex + 1 : overIndex;
+        }
+      }
 
-    const activeIndex = currentlyInTarget
-      ? listTickets.findIndex((t) => t.id === activeId)
-      : listTickets.length;
+      // Compute new position by averaging neighbors
+      const leftPos = dropIndex - 1 >= 0 ? targetListTickets[dropIndex - 1]?.position : undefined;
+      const rightPos = dropIndex < targetListTickets.length ? targetListTickets[dropIndex]?.position : undefined;
 
-    const newIndex = overIndex < 0 ? listTickets.length - 1 : overIndex;
-    
-    void reorderTickets(activeId, targetListId, newIndex);
-    setActiveId(null);
-  }
+      let newPosition: number;
+      if (leftPos === undefined && rightPos === undefined) {
+        newPosition = 0; // empty list
+      } else if (leftPos === undefined && rightPos !== undefined) {
+        newPosition = rightPos - 1; // before first
+      } else if (leftPos !== undefined && rightPos === undefined) {
+        newPosition = leftPos + 1; // after last
+      } else {
+        newPosition = (leftPos! + rightPos!) / 2; // between neighbors
+      }
+
+      // Avoid redundant update
+      if (activeTicket.list_id === targetListId && activeTicket.position === newPosition) {
+        return;
+      }
+
+      void updateTicketDetails(activeId, {
+        list_id: targetListId,
+        position: newPosition,
+      } as any);
+    }
   function handleDragCancel() {
     setActiveId(null);
   }

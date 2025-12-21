@@ -14,8 +14,12 @@ import {
 import { dtoast } from "@/lib/utils";
 import { QueryState } from "@/types/query.types";
 import { useWorkspaceContext } from "./WorkspaceProvider";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
-type CreateBoardType = (title: string, description?: string) => Promise<Tables<"board"> | undefined>;
+type CreateBoardType = (
+  title: string,
+  description?: string
+) => Promise<Tables<"board"> | undefined>;
 
 export type BoardContextType = {
   activeBoardId?: string;
@@ -32,7 +36,11 @@ export type BoardContextType = {
   deleteBoard: (boardId: string) => Promise<void>;
   deleteBoardState: QueryState;
 
-  updateBoard: (boardId: string, newTitle: string, newDescription?: string) => Promise<void>;
+  updateBoard: (
+    boardId: string,
+    newTitle: string,
+    newDescription?: string
+  ) => Promise<void>;
   updateBoardState: QueryState;
 };
 
@@ -58,6 +66,65 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
   const [createBoardState, setCreateBoardState] = useState<QueryState>("idle");
   const [deleteBoardState, setDeleteBoardState] = useState<QueryState>("idle");
   const [updateBoardState, setUpdateBoardState] = useState<QueryState>("idle");
+
+  useEffect(() => {
+    let channel: RealtimeChannel;
+
+    const setupChannel = async () => {
+      channel = supabase.channel("schema-db-changes-board");
+
+      // handle insert
+      channel.on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "board" },
+        (payload) => {
+          console.log("board inserted", payload);
+          setBoards((prev) => {
+            // check if it already exists
+            if (prev.find((w) => w.id === payload.new.id)) return prev;
+            return [...prev, payload.new as Tables<"board">];
+          });
+        }
+      );
+
+      // handle update
+      channel.on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "board" },
+        (payload) => {
+          console.log("board updated", payload);
+          setBoards((prev) =>
+            prev.map((w) =>
+              w.id === payload.new.id ? (payload.new as Tables<"board">) : w
+            )
+          );
+        }
+      );
+
+      // handle deleete
+      channel.on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "board" },
+        (payload) => {
+          console.log("board deleted", payload);
+          setBoards((prev) => prev.filter((w) => w.id !== payload.old.id));
+        }
+      );
+
+      channel.subscribe((status, err) => {
+        if (err) {
+          console.error("Error subscribing to board changes:", err);
+        } else {
+          console.log("Subscribed to board changes with status:", status);
+        }
+      });
+    };
+    setupChannel();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
 
   // console.log(
   //   "boards",
@@ -87,7 +154,7 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
       } else if (data) {
         dtoast(`Fetched ${data.length} boards`);
         setBoards(data);
-        // Automatically select the first board of the workspace 
+        // Automatically select the first board of the workspace
       }
       setBoardsState("idle");
     };
@@ -130,7 +197,10 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
       .insert(defaultLists);
 
     if (listError) {
-      dtoast(`Board created, but failed to create default lists: ${listError.message}`, "error");
+      dtoast(
+        `Board created, but failed to create default lists: ${listError.message}`,
+        "error"
+      );
     } else {
       dtoast("Board and default lists created successfully");
     }
@@ -161,7 +231,11 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
     setDeleteBoardState("idle");
   };
 
-  const updateBoard = async (boardId: string, newTitle: string, newDescription?: string) => {
+  const updateBoard = async (
+    boardId: string,
+    newTitle: string,
+    newDescription?: string
+  ) => {
     setUpdateBoardState("loading");
     dtoast("Updating board...");
     const { data, error } = await supabase
