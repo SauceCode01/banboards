@@ -11,7 +11,7 @@ import type {
   Tables,
   TablesInsert,
   TablesUpdate,
-} from "@/types/database.types"; 
+} from "@/types/database.types";
 import { useBoardContext } from "./BoardProvider";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
@@ -226,7 +226,11 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
         { event: "INSERT", schema: "public", table: "ticket" },
         (payload) => {
           const newTicket = payload.new as Tables<"ticket">;
-          setTickets((prev) => [...prev, newTicket]);
+          setTickets((prev) => {
+            // check if it already exists
+            if (prev.find((t) => t.id === newTicket.id)) return prev;
+            return [...prev, newTicket];
+          });
         }
       );
 
@@ -236,7 +240,9 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
         { event: "UPDATE", schema: "public", table: "ticket" },
         (payload) => {
           const updatedTicket = payload.new as Tables<"ticket">;
-          setTickets((prev) => prev.map((t) => (t.id === updatedTicket.id ? updatedTicket : t)));
+          setTickets((prev) =>
+            prev.map((t) => (t.id === updatedTicket.id ? updatedTicket : t))
+          );
         }
       );
 
@@ -249,7 +255,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
           setTickets((prev) => prev.filter((t) => t.id !== deletedId));
         }
       );
- 
+
       channel.subscribe((status, err) => {
         if (err) {
           console.error("Error subscribing to ticket changes:", err);

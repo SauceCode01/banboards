@@ -79,7 +79,11 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
         { event: "INSERT", schema: "public", table: "board" },
         (payload) => {
           console.log("board inserted", payload);
-          setBoards((prev) => [...prev, payload.new as Tables<"board">]);
+          setBoards((prev) => {
+            // check if it already exists
+            if (prev.find((w) => w.id === payload.new.id)) return prev;
+            return [...prev, payload.new as Tables<"board">];
+          });
         }
       );
 

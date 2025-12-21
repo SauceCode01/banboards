@@ -80,7 +80,6 @@ export const WorkspaceProvider = ({
   useEffect(() => {
     if (!userProfile) return;
 
-
     const handleFetchWorkspaces = async () => {
       if (!userProfile) return;
 
@@ -210,8 +209,6 @@ export const WorkspaceProvider = ({
     let channel: RealtimeChannel;
 
     const setupChannel = async () => {
-      await supabase.realtime.setAuth();
-
       channel = supabase.channel("schema-db-changes");
 
       // handle insert
@@ -220,10 +217,11 @@ export const WorkspaceProvider = ({
         { event: "INSERT", schema: "public", table: "workspace" },
         (payload) => {
           console.log("workspace inserted", payload);
-          setWorkspaces((prev) => [
-            ...prev,
-            payload.new as Tables<"workspace">,
-          ]);
+          setWorkspaces((prev) => {
+            // check if it already exists
+            if (prev.find((w) => w.id === payload.new.id)) return prev;
+            return [...prev, payload.new as Tables<"workspace">];
+          });
         }
       );
 
