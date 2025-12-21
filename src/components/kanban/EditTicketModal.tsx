@@ -1,10 +1,10 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import Modal from "@/components/ui/Modal";
-import type { Ticket } from "./kanban.types";
+import Modal from "@/components/ui/Modal"; 
+import { Tables } from "@/types/database.types";
 
 interface EditTicketModalProps {
-  ticket: Ticket | null;
+  ticket: Tables<"ticket"> | null;
   onClose: () => void;
   onSave: (values: { title: string; description: string; deadline: string }) => void;
 }

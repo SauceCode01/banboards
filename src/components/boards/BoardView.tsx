@@ -17,12 +17,8 @@ import {
 } from "@dnd-kit/sortable";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { Tables } from "@/types/database.types";
-import { SortableList } from "../features/dnd/SortableList";
-import {
-  POSITION_GAP,
-  POSITION_THRESHOLD,
-  reNormalizePositions,
-} from "@/lib/dnd/utils";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { SortableList } from "../features/dnd/SortableList"; 
 
 interface BoardViewProps {
   boardId: string;
@@ -78,14 +74,41 @@ export default function BoardView({ boardId }: BoardViewProps) {
   // Memoized list IDs for SortableContext
   const listIds = useMemo(() => lists.map((list) => list.id), [lists]);
 
+  // Renormalize positions to consecutive integers and persist to DB
+  async function reNormalizePositions<T extends { id: string; position: number }>(
+    items: T[],
+    table: "list" | "ticket",
+    client: SupabaseClient
+  ): Promise<T[]> {
+    const sorted = [...items].sort((a, b) => a.position - b.position);
+    const updated: T[] = [];
+    for (let i = 0; i < sorted.length; i++) {
+      const item = sorted[i];
+      const newPos = i + 1;
+      if (item.position !== newPos) {
+        const { error } = await client.from(table).update({ position: newPos }).eq("id", item.id);
+        if (error) {
+          console.error(`Failed to renormalize ${table} position`, { id: item.id, error });
+          // Continue; keep previous position if update fails
+          updated.push(item);
+          continue;
+        }
+        updated.push({ ...item, position: newPos });
+      } else {
+        updated.push(item);
+      }
+    }
+    return updated;
+  }
+
   // --- Create New List ---
   const handleAddList = async () => {
     if (newListName.trim()) {
       // Calculate position for the new list (at the end)
       const newPosition =
         lists.length > 0
-          ? lists[lists.length - 1].position + POSITION_GAP
-          : POSITION_GAP;
+          ? lists[lists.length - 1].position + 1
+          : 1;
       const { data, error } = await supabase
         .from("list")
         .insert({
@@ -116,8 +139,8 @@ export default function BoardView({ boardId }: BoardViewProps) {
       ticketsInList.length > 0
         ? ticketsInList.sort((a, b) => a.position - b.position)[
             ticketsInList.length - 1
-          ].position + POSITION_GAP
-        : POSITION_GAP;
+          ].position + 1
+        : 1;
 
     const { data, error } = await supabase
       .from("ticket")
@@ -164,7 +187,7 @@ export default function BoardView({ boardId }: BoardViewProps) {
       if (newIndex === 0) {
         newPosition = newLists[1].position / 2;
       } else if (newIndex === newLists.length - 1) {
-        newPosition = newLists[newLists.length - 2].position + POSITION_GAP;
+        newPosition = newLists[newLists.length - 2].position + 1;
       } else {
         newPosition =
           (newLists[newIndex - 1].position + newLists[newIndex + 1].position) /
@@ -173,7 +196,7 @@ export default function BoardView({ boardId }: BoardViewProps) {
 
       const needsRenormalization = newLists.some((list, i) => {
         if (i === 0) return false;
-        return list.position - newLists[i - 1].position < POSITION_THRESHOLD;
+        return list.position - newLists[i - 1].position < 0.00001;
       });
 
       if (needsRenormalization) {
@@ -222,7 +245,7 @@ export default function BoardView({ boardId }: BoardViewProps) {
         } else if (overIndex === ticketsInTargetList.length - 1) {
           newPosition =
             ticketsInTargetList[ticketsInTargetList.length - 1].position +
-            POSITION_GAP;
+            1;
         } else {
           newPosition =
             (ticketsInTargetList[overIndex - 1].position +
@@ -234,8 +257,8 @@ export default function BoardView({ boardId }: BoardViewProps) {
         newPosition =
           ticketsInTargetList.length > 0
             ? ticketsInTargetList[ticketsInTargetList.length - 1].position +
-              POSITION_GAP
-            : POSITION_GAP;
+              1
+            : 1;
       }
 
       const newTickets = [...tickets];
@@ -250,7 +273,7 @@ export default function BoardView({ boardId }: BoardViewProps) {
         if (i === 0) return false;
         return (
           ticket.position - ticketsInTargetList[i - 1].position <
-          POSITION_THRESHOLD
+          0.00001
         );
       });
 
