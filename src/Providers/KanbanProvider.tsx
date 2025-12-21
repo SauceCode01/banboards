@@ -218,16 +218,35 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     let channel: RealtimeChannel;
 
     const setupChannel = async () => {
-      await supabase.realtime.setAuth();
-
-      channel = supabase.channel("schema-ticketdafdf-changes");
+      channel = supabase.channel("schema-db-changes-ticket");
 
       // handle insert
       channel.on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "ticket" },
+        { event: "INSERT", schema: "public", table: "ticket" },
         (payload) => {
-          console.log("ticket change", payload);
+          const newTicket = payload.new as Tables<"ticket">;
+          setTickets((prev) => [...prev, newTicket]);
+        }
+      );
+
+      // handle update
+      channel.on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "ticket" },
+        (payload) => {
+          const updatedTicket = payload.new as Tables<"ticket">;
+          setTickets((prev) => prev.map((t) => (t.id === updatedTicket.id ? updatedTicket : t)));
+        }
+      );
+
+      // handle delete
+      channel.on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "ticket" },
+        (payload) => {
+          const deletedId = (payload.old as Tables<"ticket">).id;
+          setTickets((prev) => prev.filter((t) => t.id !== deletedId));
         }
       );
  
@@ -243,7 +262,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     setupChannel();
 
     return () => {
-      if (channel) supabase.removeChannel(channel);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, []);
 
