@@ -17,12 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { Tables } from "@/types/database.types";
-import { SortableList } from "../features/dnd/SortableList";
-import {
-  POSITION_GAP,
-  POSITION_THRESHOLD,
-  reNormalizePositions,
-} from "@/lib/dnd/utils";
+import { SortableList } from "../features/dnd/SortableList"; 
 
 interface BoardViewProps {
   boardId: string;
@@ -84,8 +79,8 @@ export default function BoardView({ boardId }: BoardViewProps) {
       // Calculate position for the new list (at the end)
       const newPosition =
         lists.length > 0
-          ? lists[lists.length - 1].position + POSITION_GAP
-          : POSITION_GAP;
+          ? lists[lists.length - 1].position + 1
+          : 1;
       const { data, error } = await supabase
         .from("list")
         .insert({
@@ -116,8 +111,8 @@ export default function BoardView({ boardId }: BoardViewProps) {
       ticketsInList.length > 0
         ? ticketsInList.sort((a, b) => a.position - b.position)[
             ticketsInList.length - 1
-          ].position + POSITION_GAP
-        : POSITION_GAP;
+          ].position + 1
+        : 1;
 
     const { data, error } = await supabase
       .from("ticket")
@@ -164,7 +159,7 @@ export default function BoardView({ boardId }: BoardViewProps) {
       if (newIndex === 0) {
         newPosition = newLists[1].position / 2;
       } else if (newIndex === newLists.length - 1) {
-        newPosition = newLists[newLists.length - 2].position + POSITION_GAP;
+        newPosition = newLists[newLists.length - 2].position + 1;
       } else {
         newPosition =
           (newLists[newIndex - 1].position + newLists[newIndex + 1].position) /
@@ -173,7 +168,7 @@ export default function BoardView({ boardId }: BoardViewProps) {
 
       const needsRenormalization = newLists.some((list, i) => {
         if (i === 0) return false;
-        return list.position - newLists[i - 1].position < POSITION_THRESHOLD;
+        return list.position - newLists[i - 1].position < 0.00001;
       });
 
       if (needsRenormalization) {
@@ -222,7 +217,7 @@ export default function BoardView({ boardId }: BoardViewProps) {
         } else if (overIndex === ticketsInTargetList.length - 1) {
           newPosition =
             ticketsInTargetList[ticketsInTargetList.length - 1].position +
-            POSITION_GAP;
+            1;
         } else {
           newPosition =
             (ticketsInTargetList[overIndex - 1].position +
@@ -234,8 +229,8 @@ export default function BoardView({ boardId }: BoardViewProps) {
         newPosition =
           ticketsInTargetList.length > 0
             ? ticketsInTargetList[ticketsInTargetList.length - 1].position +
-              POSITION_GAP
-            : POSITION_GAP;
+              1
+            : 1;
       }
 
       const newTickets = [...tickets];
@@ -250,7 +245,7 @@ export default function BoardView({ boardId }: BoardViewProps) {
         if (i === 0) return false;
         return (
           ticket.position - ticketsInTargetList[i - 1].position <
-          POSITION_THRESHOLD
+          0.00001
         );
       });
 

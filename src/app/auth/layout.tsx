@@ -1,4 +1,5 @@
-import PublicNavbar from "@/components/widgets/PublicNavbar";
+import PublicNavbar from "@/components/ui/PublicNavbar";
+
 
 export default function AuthLayout({
     children,
