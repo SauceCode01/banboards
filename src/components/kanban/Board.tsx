@@ -14,12 +14,12 @@ import {
   DragOverlay,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { BoardList } from "./BoardList";
-import type { Ticket } from "./kanban.types";
+import { BoardList } from "./BoardList"; 
 import { TicketContent } from "./Ticket";
 import AddTicketModal from "./AddTicketModal";
 import EditTicketModal from "./EditTicketModal";
 import { KanbanProvider, useKanban } from "@/Providers/KanbanProvider";
+import { Tables } from "@/types/database.types";
 
 const KanbanBoardInner: React.FC = () => {
   const { lists, tickets, createTicket, updateTicketDetails, reorderTickets } =
@@ -27,7 +27,7 @@ const KanbanBoardInner: React.FC = () => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addListId, setAddListId] = useState<string | null>(null);
-  const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
+  const [editingTicket, setEditingTicket] = useState<Tables<'ticket'> | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, {
@@ -36,7 +36,7 @@ const KanbanBoardInner: React.FC = () => {
   );
 
   const ticketsByList = useMemo(() => {
-    const map: Record<string, Ticket[]> = {};
+    const map: Record<string, Tables<'ticket'>[]> = {};
     for (const list of lists) map[list.id] = [];
     for (const t of tickets) {
       if (!map[t.list_id]) map[t.list_id] = [];
@@ -116,7 +116,15 @@ const KanbanBoardInner: React.FC = () => {
         const overIndex = targetListTickets.findIndex((t) => t.id === overId);
         const activeIndexInTarget = targetListTickets.findIndex((t) => t.id === activeId);
         const movingDown = activeIndexInTarget !== -1 && activeIndexInTarget < overIndex;
-        dropIndex = movingDown ? overIndex + 1 : overIndex;
+
+        if (activeIndexInTarget === -1) {
+          // Moving from another list: if hovering last ticket, place after it for easier drop-to-end
+          const isOverLast = overIndex === targetListTickets.length - 1;
+          dropIndex = isOverLast ? targetListTickets.length : overIndex;
+        } else {
+          // Same-list behavior
+          dropIndex = movingDown ? overIndex + 1 : overIndex;
+        }
       }
 
       // Compute new position by averaging neighbors

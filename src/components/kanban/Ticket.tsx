@@ -1,11 +1,11 @@
 "use client";
 import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import type { Ticket } from "./kanban.types";
+import { CSS } from "@dnd-kit/utilities"; 
+import { Tables } from "@/types/database.types";
 
 export const TicketContent: React.FC<{
-  ticket: Ticket;
+  ticket: Tables<'ticket'>;
   onDelete?: (id: string) => void;
   dragHandleProps?: { attributes?: any; listeners?: any };
 }> = ({ ticket, onDelete, dragHandleProps }) => {
@@ -47,10 +47,10 @@ export const TicketContent: React.FC<{
 };
 
 interface TicketCardProps {
-  ticket: Ticket;
+  ticket: Tables<'ticket'>;
   onDelete?: (id: string) => void;
   dim?: boolean;
-  onOpen?: (ticket: Ticket) => void;
+  onOpen?: (ticket: Tables<'ticket'>) => void;
 }
 
 export const TicketCard: React.FC<TicketCardProps> = ({ ticket, onDelete, dim, onOpen }) => {

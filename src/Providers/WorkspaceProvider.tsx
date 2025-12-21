@@ -259,7 +259,7 @@ export const WorkspaceProvider = ({
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
-  });
+  }, []);
 
   const activeWorkspace = useMemo(
     () => workspaces.find((w) => w.id === activeWorkspaceId),

@@ -11,11 +11,7 @@ import type {
   Tables,
   TablesInsert,
   TablesUpdate,
-} from "@/types/database.types";
-import type {
-  List as UIList,
-  Ticket as UITicket,
-} from "@/components/kanban/kanban.types";
+} from "@/types/database.types"; 
 import { useBoardContext } from "./BoardProvider";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
@@ -23,10 +19,10 @@ import { useQuery } from "@tanstack/react-query";
 export interface KanbanContextType {
   lists: Tables<"list">[];
   tickets: Tables<"ticket">[];
-  createTicket: (ticket: Omit<UITicket, "id">) => Promise<void>;
+  createTicket: (ticket: TablesInsert<"ticket">) => Promise<void>;
   updateTicketDetails: (
     id: string,
-    updates: Partial<Pick<UITicket, "title" | "description" | "deadline">>
+    updates: Partial<TablesUpdate<"ticket">>
   ) => Promise<void>;
   reorderTickets: (
     ticketId: string,
@@ -224,43 +220,24 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     const setupChannel = async () => {
       await supabase.realtime.setAuth();
 
-      channel = supabase.channel("schema-db-changes-ticket");
+      channel = supabase.channel("schema-ticketdafdf-changes");
 
       // handle insert
       channel.on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "ticket" },
+        { event: "*", schema: "public", table: "ticket" },
         (payload) => {
-          console.log("ticket inserted", payload);
-          setTickets((prev) => [...prev, payload.new as Tables<"ticket">]);
+          console.log("ticket change", payload);
         }
       );
-
-      // handle update
-      channel.on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "ticket" },
-        (payload) => {
-          console.log("ticket updated", payload);
-          setTickets((prev) =>
-            prev.map((w) =>
-              w.id === payload.new.id ? (payload.new as Tables<"ticket">) : w
-            )
-          );
+ 
+      channel.subscribe((status, err) => {
+        if (err) {
+          console.error("Error subscribing to ticket changes:", err);
+        } else {
+          console.log("Subscribed to ticket changes with status:", status);
         }
-      );
-
-      // handle deleete
-      channel.on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "ticket" },
-        (payload) => {
-          console.log("ticket deleted", payload);
-          setTickets((prev) => prev.filter((w) => w.id !== payload.old.id));
-        }
-      );
-
-      channel.subscribe();
+      });
     };
 
     setupChannel();
@@ -268,7 +245,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
-  });
+  }, []);
 
   return (
     <KanbanContext.Provider value={value}>{children}</KanbanContext.Provider>

@@ -107,7 +107,13 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
         }
       );
 
-      channel.subscribe();
+      channel.subscribe((status, err) => {
+        if (err) {
+          console.error("Error subscribing to board changes:", err);
+        } else {
+          console.log("Subscribed to board changes with status:", status);
+        }
+      });
     };
     setupChannel();
 
