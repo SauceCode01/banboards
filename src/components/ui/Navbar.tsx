@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { LogOut, User as UserIcon, Settings } from "lucide-react";
 
 const Navbar = () => {
-  const { session, userProfile } = useAuthContext();
+  const { session, userProfile, avatarUrl } = useAuthContext();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -26,7 +26,7 @@ const Navbar = () => {
       <div className="px-6 h-16 flex justify-between items-center">
         <Link
           href="/"
-          className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500"
+          className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-indigo-500"
         >
           BanBoards
         </Link>
@@ -44,9 +44,14 @@ const Navbar = () => {
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                  className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+                  className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors overflow-hidden ring-1 ring-slate-700"
                 >
-                  <UserIcon className="w-5 h-5" />
+                  {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <UserIcon className="w-5 h-5" />
+                  )}
                 </button>
 
                 <AnimatePresence>
@@ -78,11 +83,11 @@ const Navbar = () => {
                         </li>
                         <li>
                           <Link
-                            href="/settings"
+                            href="/profile/settings"
                             className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700/50 rounded-md"
                           >
                             <Settings className="w-4 h-4" />
-                            Settings
+                            Profile Settings
                           </Link>
                         </li>
                         <li className="my-1 h-px bg-slate-700" />
