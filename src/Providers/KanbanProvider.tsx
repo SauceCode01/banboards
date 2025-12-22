@@ -14,7 +14,7 @@ import type {
 } from "@/types/database.types";
 import { useBoardContext } from "./BoardProvider";
 import { RealtimeChannel } from "@supabase/supabase-js";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface KanbanContextType {
   lists: Tables<"list">[];
@@ -66,6 +66,8 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [activeBoardId]);
 
+  const queryClient = useQueryClient();
+
   async function createTicket(input: TablesInsert<"ticket">) {
     try {
       const insert: TablesInsert<"ticket"> = {
@@ -82,7 +84,9 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
         .single();
       if (error || !data) throw error || new Error("Insert failed");
       const committed = data as Tables<"ticket">;
-      setTickets((prev) => [...prev, committed]);
+      setTickets((prev) => [...prev, committed]); 
+      // invalidate the query key 
+      await queryClient.invalidateQueries({queryKey: ["kanbanData", activeBoardId]});
     } catch (e) {
       console.log("An error occured while creating a ticket: ", input);
     }
@@ -120,6 +124,10 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       if (error || !data) throw error || new Error("Update failed");
       const committed = data as Tables<"ticket">;
       setTickets((prev) => prev.map((t) => (t.id === id ? committed : t)));
+
+      
+      // invalidate the query key 
+      await queryClient.invalidateQueries({queryKey: ["kanbanData", activeBoardId]});
     } catch (e) {
       console.log("An error occured while updating a ticket: ", updates);
     }
@@ -206,6 +214,10 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (e) {
       console.log("failed to reorder a ticket. ", e);
     }
+
+    
+      // invalidate the query key 
+      await queryClient.invalidateQueries({queryKey: ["kanbanData", activeBoardId]});
   }
 
   const value = useMemo<KanbanContextType>(
