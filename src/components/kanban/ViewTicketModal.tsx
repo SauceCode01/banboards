@@ -41,31 +41,23 @@ const ViewTicketModal: React.FC<ViewTicketModalProps> = ({ ticket, onClose, onEd
           </div>
         </div>
 
-        {/* Meta grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-md p-3">
+        {/* Meta info */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
             <div className="text-xs text-slate-400">List</div>
             <div className="text-sm text-slate-100">{list?.title || "Unknown"}</div>
           </div>
-          <div className="bg-slate-800 border border-slate-700 rounded-md p-3">
+          <div className="flex items-center justify-between">
             <div className="text-xs text-slate-400">Deadline</div>
             <div className="text-sm text-slate-100">{deadlineLabel}</div>
-          </div>
-          <div className="bg-slate-800 border border-slate-700 rounded-md p-3">
-            <div className="text-xs text-slate-400">Position</div>
-            <div className="text-sm text-slate-100">{ticket.position}</div>
-          </div>
-          <div className="bg-slate-800 border border-slate-700 rounded-md p-3">
-            <div className="text-xs text-slate-400">Ticket ID</div>
-            <div className="text-sm text-slate-100 wrap-break-word">{ticket.id}</div>
           </div>
         </div>
 
         {/* Description */}
         <div>
           <div className="text-xs text-slate-400 mb-2">Description</div>
-          <div className="bg-slate-800 border border-slate-700 rounded-md p-3">
-            <p className="text-sm text-slate-200 whitespace-pre-wrap">
+          <div className="bg-slate-800 border border-slate-700 rounded-md p-3 max-h-100 overflow-y-auto">
+            <p className="text-sm text-slate-200 whitespace-pre-wrap ">
               {ticket.description?.trim() ? ticket.description : "No description"}
             </p>
           </div>
