@@ -42,6 +42,9 @@ export type BoardContextType = {
     newDescription?: string
   ) => Promise<void>;
   updateBoardState: QueryState;
+
+  selectedBoard?: Tables<"board">;
+  setSelectedBoard: Dispatch<SetStateAction<Tables<"board"> | undefined>>;
 };
 
 const BoardContext = createContext<BoardContextType | null>(null);
@@ -66,6 +69,7 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
   const [createBoardState, setCreateBoardState] = useState<QueryState>("idle");
   const [deleteBoardState, setDeleteBoardState] = useState<QueryState>("idle");
   const [updateBoardState, setUpdateBoardState] = useState<QueryState>("idle");
+  const [selectedBoard, setSelectedBoard] = useState<Tables<"board"> | undefined>(undefined);
 
   useEffect(() => {
     let channel: RealtimeChannel;
@@ -256,8 +260,8 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
     deleteBoard,
     deleteBoardState,
     updateBoard,
-    updateBoardState,
-  };
+    updateBoardState,    selectedBoard,
+    setSelectedBoard,  };
 
   return (
     <BoardContext.Provider value={value}>{children}</BoardContext.Provider>
