@@ -1,18 +1,35 @@
-"use client";
-import KanbanBoard from "@/components/kanban/Board";
-import BoardCollaborators from "@/components/boards/BoardCollaborators";
-import { useParams } from "next/navigation";
-import React from "react";
+import { supabaseAdmin } from "@/lib/supabase/supabaseAdmin";
+import { Metadata } from "next";
+import BoardViewClient from "./BoardViewClient";
 
-const BoardViewPage = () => {
-  const { boardId } = useParams<{ boardId: string }>();
-
-  return (
-    <div className="h-full w-full bg-slate-950">
-      <KanbanBoard />
-      <BoardCollaborators />
-    </div>
-  );
+type Props = {
+  params: { boardId: string };
 };
 
-export default BoardViewPage;
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { boardId } = params;
+
+  const { data: board } = await supabaseAdmin
+    .from("boards")
+    .select("title")
+    .eq("id", boardId)
+    .single();
+
+  const title = board?.title
+    ? `${board.title} | TaskFlow`
+    : "Board View | TaskFlow";
+  const description = board?.title
+    ? `View and manage tasks for ${board.title}.`
+    : "View and manage your tasks.";
+
+  return {
+    title,
+    description,
+  };
+}
+
+const Page = () => {
+  return <BoardViewClient />;
+};
+
+export default Page;

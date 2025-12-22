@@ -7,6 +7,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Modal from "@/components/ui/Modal";
 import WorkspaceSettings from "./WorkspaceSettings";
+import { supabase } from "@/lib/supabase/supabaseClient";
 
 interface WorkspaceCardProps {
   workspace: Tables<"workspace">;
@@ -47,11 +48,23 @@ const WorkspaceCard = ({ workspace }: WorkspaceCardProps) => {
     setMenuOpen(false);
   };
 
+  const handleWorkspaceClicked = async (id: string) => {
+    const { data: firstBoards } = await supabase
+                .from("board")
+                .select("id")
+                .eq("workspace_id", id)
+                .order("created_at", { ascending: true })
+                .limit(1);
+    
+            const firstBoardId = firstBoards && firstBoards.length > 0 ? firstBoards[0].id : "null";
+            router.push(`/workspaces/${id}/boards/${firstBoardId}/view`);
+  }
+
   return (
     <>
       <div
         className="bg-slate-900/70 backdrop-blur-sm p-6 rounded-2xl border border-slate-800 relative flex flex-col justify-between cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-slate-700"
-        onClick={() => handleNavigate(`/workspaces/${workspace.id}/boards`)}
+        onClick={() => handleWorkspaceClicked(workspace.id)}
       >
         <div className="flex items-center mb-4">
           <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center mr-4">
