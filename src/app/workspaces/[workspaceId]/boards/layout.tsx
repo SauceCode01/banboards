@@ -13,7 +13,7 @@ const BoardsLayout = (props: Props) => {
   const { setActiveBoardId } = useBoardContext();
 
   useEffect(() => {
-    setActiveBoardId(boardId);
+    setActiveBoardId(boardId && boardId !== "null" ? boardId : undefined);
   }, [setActiveBoardId, boardId]);
 
   return <>{props.children}</>;

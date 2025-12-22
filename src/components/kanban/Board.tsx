@@ -166,7 +166,7 @@ const KanbanBoardInner: React.FC = () => {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex gap-4 min-w-max">
+        <div className="flex gap-4 min-w-max h-full  items-start relative">
           {lists
             .sort((a, b) => a.position - b.position)
             .map((list) => (

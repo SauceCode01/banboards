@@ -11,6 +11,8 @@ export type AuthContextType = {
   session: Session | null;
   userProfile: Tables<"user_profile"> | null;
   authState: AuthState;
+  avatarUrl: string | null;
+  refreshUserProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -29,6 +31,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     null
   );
   const [authState, setAuthState] = useState<AuthState>("initiating");
+  // No longer need separate avatarUrl state, it will come from userProfile
+  // const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // console.log("AuthProvider", { session, userProfile, authState });
 
@@ -55,22 +59,72 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (!session) {
-      setUserProfile(null);
-      return;
-    }
-
-    const loadProfile = async () => {
-      const profile = await getProfileData(session.user);
-      setUserProfile(profile);
-    };
     loadProfile();
   }, [session]);
+
+  const loadProfile = async () => {
+    if (!session) {
+      setUserProfile(null);
+      // setAvatarUrl(null); // No longer needed
+      return;
+    }
+    const profile = await getProfileData(session.user);
+    setUserProfile(profile);
+  };
+
+  // Expose a refresh helper for pages (e.g., after avatar upload)
+  async function refreshUserProfile() {
+    console.log("Refreshing user profile...");
+    // No longer need to call loadAvatar separately
+    await loadProfile();
+  }
+
+  // React to realtime updates on user_profile for current user
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const channel = supabase.channel("schema-db-changes-user_profile");
+
+    channel.on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "user_profile",
+        filter: `id=eq.${session.user.id}`,
+      },
+      (payload) => {
+        const next = payload.new as Tables<"user_profile">;
+        setUserProfile(next);
+      }
+    );
+
+    channel.on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "user_profile",
+        filter: `id=eq.${session.user.id}`,
+      },
+      (payload) => {
+        const next = payload.new as Tables<"user_profile">;
+        setUserProfile(next);
+      }
+    );
+
+    channel.subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id]);
 
   const value: AuthContextType = {
     session,
     userProfile,
     authState,
+    avatarUrl: userProfile?.photo_url || null, // Get avatar from profile
+    refreshUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
