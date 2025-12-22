@@ -38,7 +38,10 @@ export const TicketContent: React.FC<{
         {onDelete ? (
           <div className="h-full flex flex-col">
             <button
-              onClick={() => onDelete(ticket.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(ticket.id);
+              }}
               className="text-slate-400 hover:text-red-400 text-xs"
               title="Delete ticket"
             >

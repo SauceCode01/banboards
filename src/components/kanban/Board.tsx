@@ -22,7 +22,7 @@ import { KanbanProvider, useKanban } from "@/Providers/KanbanProvider";
 import { Tables } from "@/types/database.types";
 
 const KanbanBoardInner: React.FC = () => {
-  const { lists, tickets, createTicket, updateTicketDetails, reorderTickets } =
+  const { lists, tickets, createTicket, updateTicketDetails, reorderTickets, deleteTicket } =
     useKanban();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -175,7 +175,7 @@ const KanbanBoardInner: React.FC = () => {
                 list={list}
                 tickets={(ticketsByList[list.id] || []).map((t) => ({ ...t }))}
                 onAddTicket={addTicket}
-                onDeleteTicket={() => {}}
+                onDeleteTicket={deleteTicket}
                 onOpenTicket={(t) => setEditingTicket(t)}
               />
             ))}

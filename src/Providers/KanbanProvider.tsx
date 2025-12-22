@@ -29,6 +29,7 @@ export interface KanbanContextType {
     newListId: string,
     afterId: string
   ) => Promise<void>;
+  deleteTicket: (id: string) => Promise<void>;
 }
 
 const KanbanContext = createContext<KanbanContextType | undefined>(undefined);
@@ -84,9 +85,11 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
         .single();
       if (error || !data) throw error || new Error("Insert failed");
       const committed = data as Tables<"ticket">;
-      setTickets((prev) => [...prev, committed]); 
-      // invalidate the query key 
-      await queryClient.invalidateQueries({queryKey: ["kanbanData", activeBoardId]});
+      setTickets((prev) => [...prev, committed]);
+      // invalidate the query key
+      await queryClient.invalidateQueries({
+        queryKey: ["kanbanData", activeBoardId],
+      });
     } catch (e) {
       console.log("An error occured while creating a ticket: ", input);
     }
@@ -125,11 +128,38 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       const committed = data as Tables<"ticket">;
       setTickets((prev) => prev.map((t) => (t.id === id ? committed : t)));
 
-      
-      // invalidate the query key 
-      await queryClient.invalidateQueries({queryKey: ["kanbanData", activeBoardId]});
+      // invalidate the query key
+      await queryClient.invalidateQueries({
+        queryKey: ["kanbanData", activeBoardId],
+      });
     } catch (e) {
       console.log("An error occured while updating a ticket: ", updates);
+    }
+  }
+
+  async function deleteTicket(
+    id: string, 
+  ) { 
+
+    setTickets((prev) => {
+      const newTickets = prev.filter((ticket) => ticket.id !== id);
+      return newTickets;
+    });
+
+    try {
+      const { error, data } = await supabase
+        .from("ticket")
+        .delete( )
+        .eq("id", id) 
+      console.log("deleting ticket result", { error, data });
+      if (error  ) throw error || new Error("deleting failed"); 
+
+      // invalidate the query key
+      await queryClient.invalidateQueries({
+        queryKey: ["kanbanData", activeBoardId],
+      });
+    } catch (e) {
+      console.log("An error occured while deleting a ticket: ",id , e);
     }
   }
 
@@ -215,9 +245,10 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("failed to reorder a ticket. ", e);
     }
 
-    
-      // invalidate the query key 
-      await queryClient.invalidateQueries({queryKey: ["kanbanData", activeBoardId]});
+    // invalidate the query key
+    await queryClient.invalidateQueries({
+      queryKey: ["kanbanData", activeBoardId],
+    });
   }
 
   const value = useMemo<KanbanContextType>(
@@ -227,6 +258,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       createTicket,
       updateTicketDetails,
       reorderTickets,
+      deleteTicket,
     }),
     [lists, tickets, tickets]
   );
@@ -307,7 +339,7 @@ const fetchBoardData = async (boardId: string) => {
   console.log("latest board id", boardId);
   if (!boardId || boardId === "null") {
     return { lists: [], tickets: [] };
-  } 
+  }
   console.log("loading tickets", boardId);
 
   const { data: listRows, error: listErr } = await supabase
