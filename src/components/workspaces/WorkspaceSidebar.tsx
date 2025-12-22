@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronsUpDown, Check, LayoutGrid, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase/supabaseClient";
 import Modal from "@/components/ui/Modal";
 import NewBoard from "@/components/boards/NewBoard";
 
@@ -35,9 +36,18 @@ export default function WorkspaceSidebar() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const handleWorkspaceSelect = (workspaceId: string) => { 
+    const handleWorkspaceSelect = async (workspaceId: string) => { 
         setIsMenuOpen(false);
-        router.push(`/workspaces/${workspaceId}/boards`);
+        // Fetch first board in the selected workspace; if none, use 'null'
+        const { data: firstBoards } = await supabase
+            .from("board")
+            .select("id")
+            .eq("workspace_id", workspaceId)
+            .order("created_at", { ascending: true })
+            .limit(1);
+
+        const firstBoardId = firstBoards && firstBoards.length > 0 ? firstBoards[0].id : "null";
+        router.push(`/workspaces/${workspaceId}/boards/${firstBoardId}/view`);
     };
 
     const handleBoardSelect = (boardId: string) => {
