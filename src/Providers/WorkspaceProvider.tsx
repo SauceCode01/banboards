@@ -12,8 +12,7 @@ import {
   useMemo,
 } from "react";
 import { useAuthContext } from "./AuthProvider";
-import { QueryState } from "@/types/query.types";
-import { dtoast } from "@/lib/utils";
+import { QueryState } from "@/types/query.types"; 
 import { desc, sup } from "framer-motion/client";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -88,12 +87,10 @@ export const WorkspaceProvider = ({
 
       const { data, error } = await supabase.from("workspace").select("*");
 
-      if (error) {
-        dtoast(`Error fetching workspaces: ${error.message}`, "error");
+      if (error) { 
         setWorkspaces([]);
         setWorkspacesState("idle");
-      } else if (data) {
-        dtoast(`Fetched ${data.length} workspaces`);
+      } else if (data) { 
         setWorkspaces(data);
         // If there's no active workspace and we have data, set the first one as active.
         if (data.length > 0 && !activeWorkspaceId) {
@@ -121,8 +118,7 @@ export const WorkspaceProvider = ({
       .select()
       .single();
 
-    if (createError || !newWorkspace) {
-      dtoast(`Error creating workspace: ${createError?.message}`, "error");
+    if (createError || !newWorkspace) { 
       setCreateWorkspaceState("idle");
       return;
     }
@@ -136,11 +132,7 @@ export const WorkspaceProvider = ({
       .from("workspace_member")
       .insert(newMemberDTO);
 
-    if (memberError) {
-      dtoast(
-        `Error creating workspace member: ${memberError.message}`,
-        "error"
-      );
+    if (memberError) { 
       await supabase.from("workspace").delete().eq("id", newWorkspace.id);
       setCreateWorkspaceState("idle");
       return;
@@ -148,31 +140,27 @@ export const WorkspaceProvider = ({
 
     setWorkspaces((prev) => [...prev, newWorkspace]);
     setActiveWorkspaceId(newWorkspace.id); // Switch to the new workspace
-    setCreateWorkspaceState("idle");
-    dtoast("Workspace created successfully");
+    setCreateWorkspaceState("idle"); 
     return newWorkspace;
   };
 
   const deleteWorkspace = async (workspaceId: string) => {
     if (!workspaceId) return;
     if (!userProfile) return;
-    setDeleteWorkspaceState("loading");
-    dtoast("Deleting workspace...");
+    setDeleteWorkspaceState("loading"); 
     const { error } = await supabase
       .from("workspace")
       .delete()
       .eq("id", workspaceId);
 
-    if (error) {
-      dtoast(`Error deleting workspace: ${error.message}`, "error");
+    if (error) { 
     } else {
       setWorkspaces((prev) => prev.filter((w) => w.id !== workspaceId));
       // If the deleted workspace was the active one, switch to the first available one
       if (activeWorkspaceId === workspaceId) {
         const firstWorkspace = workspaces.find((w) => w.id !== workspaceId);
         setActiveWorkspaceId(firstWorkspace?.id);
-      }
-      dtoast("Workspace deleted successfully");
+      } 
     }
     setDeleteWorkspaceState("idle");
   };
@@ -182,8 +170,7 @@ export const WorkspaceProvider = ({
     newTitle: string,
     newDescription?: string
   ) => {
-    setUpdateWorkspaceState("loading");
-    dtoast("Updating workspace...");
+    setUpdateWorkspaceState("loading"); 
     const { data, error } = await supabase
       .from("workspace")
       .update({ title: newTitle, description: newDescription })
@@ -191,13 +178,11 @@ export const WorkspaceProvider = ({
       .select()
       .single();
 
-    if (error || !data) {
-      dtoast(`Error updating workspace: ${error?.message}`, "error");
+    if (error || !data) { 
     } else {
       setWorkspaces((prev) =>
         prev.map((w) => (w.id === workspaceId ? data : w))
-      );
-      dtoast("Workspace updated successfully");
+      ); 
     }
     setUpdateWorkspaceState("idle");
   };
