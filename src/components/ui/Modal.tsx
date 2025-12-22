@@ -19,7 +19,12 @@ const Modal = ({ isOpen, onClose, children, title }: ModalProps) => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={onClose}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
+          onTouchStart={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
         >
           <motion.div
             initial={{ scale: 0.95, y: 20 }}
@@ -27,7 +32,8 @@ const Modal = ({ isOpen, onClose, children, title }: ModalProps) => {
             exit={{ scale: 0.95, y: 20 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
             className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md"
-            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-6 border-b border-slate-800">
               <h2 className="text-xl font-bold text-white">{title}</h2>

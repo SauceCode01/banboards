@@ -18,16 +18,18 @@ import { BoardList } from "./BoardList";
 import { TicketContent } from "./Ticket";
 import AddTicketModal from "./AddTicketModal";
 import EditTicketModal from "./EditTicketModal";
+import ViewTicketModal from "./ViewTicketModal";
 import { KanbanProvider, useKanban } from "@/Providers/KanbanProvider";
 import { Tables } from "@/types/database.types";
 
 const KanbanBoardInner: React.FC = () => {
-  const { lists, tickets, createTicket, updateTicketDetails, reorderTickets } =
+  const { lists, tickets, createTicket, updateTicketDetails, reorderTickets, deleteTicket } =
     useKanban();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addListId, setAddListId] = useState<string | null>(null);
   const [editingTicket, setEditingTicket] = useState<Tables<'ticket'> | null>(null);
+  const [viewingTicket, setViewingTicket] = useState<Tables<'ticket'> | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, {
@@ -175,8 +177,8 @@ const KanbanBoardInner: React.FC = () => {
                 list={list}
                 tickets={(ticketsByList[list.id] || []).map((t) => ({ ...t }))}
                 onAddTicket={addTicket}
-                onDeleteTicket={() => {}}
-                onOpenTicket={(t) => setEditingTicket(t)}
+                onDeleteTicket={deleteTicket}
+                onOpenTicket={(t) => setViewingTicket(t)}
               />
             ))}
         </div>
@@ -204,6 +206,14 @@ const KanbanBoardInner: React.FC = () => {
         }}
         listName={lists.find((l) => l.id === addListId)?.title}
         onSubmit={submitAddTicket}
+      />
+      <ViewTicketModal
+        ticket={viewingTicket}
+        onClose={() => setViewingTicket(null)}
+        onEdit={(t) => {
+          setViewingTicket(null);
+          setEditingTicket(t);
+        }}
       />
       <EditTicketModal
         ticket={editingTicket}
