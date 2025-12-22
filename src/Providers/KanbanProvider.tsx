@@ -45,10 +45,10 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
   const [lists, setLists] = useState<Tables<"list">[]>([]);
   const [tickets, setTickets] = useState<Tables<"ticket">[]>([]);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, isFetching } = useQuery({
     queryKey: ["kanbanData", activeBoardId],
     queryFn: async () => fetchBoardData(activeBoardId!),
-    enabled: !!activeBoardId,
+    enabled: !!activeBoardId && activeBoardId !== "null",
   });
 
   useEffect(() => {
@@ -57,6 +57,14 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       setTickets(data.tickets);
     }
   }, [data]);
+
+  // Clear state when there is no valid active board
+  useEffect(() => {
+    if (!activeBoardId || activeBoardId === "null") {
+      setLists([]);
+      setTickets([]);
+    }
+  }, [activeBoardId]);
 
   async function createTicket(input: TablesInsert<"ticket">) {
     try {
@@ -285,9 +293,9 @@ export function useKanban(): KanbanContextType {
 
 const fetchBoardData = async (boardId: string) => {
   console.log("latest board id", boardId);
-  if (!boardId) {
-    return;
-  }
+  if (!boardId || boardId === "null") {
+    return { lists: [], tickets: [] };
+  } 
   console.log("loading tickets", boardId);
 
   const { data: listRows, error: listErr } = await supabase
