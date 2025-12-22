@@ -58,7 +58,7 @@ export const BoardList: React.FC<BoardListProps> = ({
       </div>
 
       <div
-        className={` flex-1 border border-t-0 border-slate-700 p-3  rounded-b-md   sticky bottom-2 bg-slate-900/60`}
+        className={`shrink-0 border border-t-0 border-slate-700 p-3 rounded-b-md bg-slate-900/60`}
       >
         <button
           onClick={() => onAddTicket(list.id)}
