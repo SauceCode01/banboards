@@ -277,10 +277,10 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "ticket" },
         async (payload) => {
-          console.log("invalidating tickets from realtime insert");
-          // invalidate the query key
+          console.log("invalidating kanban queries from realtime insert");
+          // invalidate all kanbanData queries (any board)
           await queryClient.invalidateQueries({
-            queryKey: ["kanbanData", activeBoardId],
+            queryKey: ["kanbanData"],
           });
           const newTicket = payload.new as Tables<"ticket">;
           setTickets((prev) => {
@@ -297,10 +297,9 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "ticket" },
         async (payload) => {
-          console.log("invalidating tickets from realtime update");
-          // invalidate the query key
+          console.log("invalidating kanban queries from realtime update");
           await queryClient.invalidateQueries({
-            queryKey: ["kanbanData", activeBoardId],
+            queryKey: ["kanbanData"],
           });
           const updatedTicket = payload.new as Tables<"ticket">;
           setTickets((prev) =>
@@ -314,10 +313,9 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "ticket" },
         async (payload) => {
-          console.log("invalidating tickets from realtime delete");
-          // invalidate the query key
+          console.log("invalidating kanban queries from realtime delete");
           await queryClient.invalidateQueries({
-            queryKey: ["kanbanData", activeBoardId],
+            queryKey: ["kanbanData"],
           });
           const deletedId = (payload.old as Tables<"ticket">).id;
           setTickets((prev) => prev.filter((t) => t.id !== deletedId)); 
