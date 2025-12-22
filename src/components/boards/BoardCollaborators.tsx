@@ -10,7 +10,7 @@ import { Tooltip } from "react-tooltip";
 type PresenceState = {
   username: string;
   email: string;
-  avatar_url: string | null;
+  photo_url: string | null;
 };
 
 type Collaborator = {
@@ -49,7 +49,7 @@ export default function BoardCollaborators() {
           await channel.track({
             username: userProfile.username,
             email: userProfile.email,
-            avatar_url: userProfile.avatar_url,
+            photo_url: userProfile.photo_url,
           });
         }
       });
@@ -64,27 +64,31 @@ export default function BoardCollaborators() {
     };
   }, [userProfile, boardId]);
 
-  if (collaborators.length === 0) {
+  const otherCollaborators = collaborators.filter(
+    (c) => c.id !== userProfile?.id
+  );
+
+  if (otherCollaborators.length === 0) {
     return null;
   }
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex items-center -space-x-2">
-      {collaborators.map((collaborator) => (
+      {otherCollaborators.map((collaborator) => (
         <div key={collaborator.id}>
           <a
             data-tooltip-id={`tooltip-${collaborator.id}`}
             data-tooltip-content={`${collaborator.username} (${collaborator.email})`}
           >
-            {collaborator.avatar_url ? (
+            {collaborator.photo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={collaborator.avatar_url}
+                src={collaborator.photo_url}
                 alt={collaborator.username}
-                className="h-10 w-10 rounded-full object-cover border-2 border-slate-900"
+                className="h-10 w-10 rounded-full object-cover border-2 border-green-500"
               />
             ) : (
-              <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold border-2 border-slate-900">
+              <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold border-2 border-green-500">
                 {collaborator.username?.charAt(0).toUpperCase()}
               </div>
             )}
