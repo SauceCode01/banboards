@@ -14,7 +14,7 @@ import type {
 } from "@/types/database.types";
 import { useBoardContext } from "./BoardProvider";
 import { RealtimeChannel } from "@supabase/supabase-js";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface KanbanContextType {
   lists: Tables<"list">[];
@@ -29,6 +29,7 @@ export interface KanbanContextType {
     newListId: string,
     afterId: string
   ) => Promise<void>;
+  deleteTicket: (id: string) => Promise<void>;
 }
 
 const KanbanContext = createContext<KanbanContextType | undefined>(undefined);
@@ -47,7 +48,10 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const { data, isLoading, error, isFetching } = useQuery({
     queryKey: ["kanbanData", activeBoardId],
-    queryFn: async () => fetchBoardData(activeBoardId!),
+    queryFn: async () => {
+      console.log("fetching kanban data for board", activeBoardId);
+      return fetchBoardData(activeBoardId!);
+    },
     enabled: !!activeBoardId && activeBoardId !== "null",
   });
 
@@ -66,6 +70,8 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [activeBoardId]);
 
+  const queryClient = useQueryClient();
+
   async function createTicket(input: TablesInsert<"ticket">) {
     try {
       const insert: TablesInsert<"ticket"> = {
@@ -83,6 +89,10 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       if (error || !data) throw error || new Error("Insert failed");
       const committed = data as Tables<"ticket">;
       setTickets((prev) => [...prev, committed]);
+      // invalidate the query key
+      await queryClient.invalidateQueries({
+        queryKey: ["kanbanData", activeBoardId],
+      });
     } catch (e) {
       console.log("An error occured while creating a ticket: ", input);
     }
@@ -120,8 +130,36 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       if (error || !data) throw error || new Error("Update failed");
       const committed = data as Tables<"ticket">;
       setTickets((prev) => prev.map((t) => (t.id === id ? committed : t)));
+
+      // invalidate the query key
+      await queryClient.invalidateQueries({
+        queryKey: ["kanbanData", activeBoardId],
+      });
     } catch (e) {
       console.log("An error occured while updating a ticket: ", updates);
+    }
+  }
+
+  async function deleteTicket(id: string) {
+    setTickets((prev) => {
+      const newTickets = prev.filter((ticket) => ticket.id !== id);
+      return newTickets;
+    });
+
+    try {
+      const { error, data } = await supabase
+        .from("ticket")
+        .delete()
+        .eq("id", id);
+      console.log("deleting ticket result", { error, data });
+      if (error) throw error || new Error("deleting failed");
+
+      // invalidate the query key
+      await queryClient.invalidateQueries({
+        queryKey: ["kanbanData", activeBoardId],
+      });
+    } catch (e) {
+      console.log("An error occured while deleting a ticket: ", id, e);
     }
   }
 
@@ -206,6 +244,11 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (e) {
       console.log("failed to reorder a ticket. ", e);
     }
+
+    // invalidate the query key
+    await queryClient.invalidateQueries({
+      queryKey: ["kanbanData", activeBoardId],
+    });
   }
 
   const value = useMemo<KanbanContextType>(
@@ -215,6 +258,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       createTicket,
       updateTicketDetails,
       reorderTickets,
+      deleteTicket,
     }),
     [lists, tickets, tickets]
   );
@@ -232,13 +276,19 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       channel.on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "ticket" },
-        (payload) => {
+        async (payload) => {
+          console.log("invalidating kanban queries from realtime insert");
+          // invalidate all kanbanData queries (any board)
+          await queryClient.invalidateQueries({
+            queryKey: ["kanbanData"],
+          });
           const newTicket = payload.new as Tables<"ticket">;
           setTickets((prev) => {
             // check if it already exists
             if (prev.find((t) => t.id === newTicket.id)) return prev;
             return [...prev, newTicket];
           });
+
         }
       );
 
@@ -246,11 +296,15 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       channel.on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "ticket" },
-        (payload) => {
+        async (payload) => {
+          console.log("invalidating kanban queries from realtime update");
+          await queryClient.invalidateQueries({
+            queryKey: ["kanbanData"],
+          });
           const updatedTicket = payload.new as Tables<"ticket">;
           setTickets((prev) =>
             prev.map((t) => (t.id === updatedTicket.id ? updatedTicket : t))
-          );
+          ); 
         }
       );
 
@@ -258,9 +312,13 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       channel.on(
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "ticket" },
-        (payload) => {
+        async (payload) => {
+          console.log("invalidating kanban queries from realtime delete");
+          await queryClient.invalidateQueries({
+            queryKey: ["kanbanData"],
+          });
           const deletedId = (payload.old as Tables<"ticket">).id;
-          setTickets((prev) => prev.filter((t) => t.id !== deletedId));
+          setTickets((prev) => prev.filter((t) => t.id !== deletedId)); 
         }
       );
 
@@ -295,7 +353,7 @@ const fetchBoardData = async (boardId: string) => {
   console.log("latest board id", boardId);
   if (!boardId || boardId === "null") {
     return { lists: [], tickets: [] };
-  } 
+  }
   console.log("loading tickets", boardId);
 
   const { data: listRows, error: listErr } = await supabase
