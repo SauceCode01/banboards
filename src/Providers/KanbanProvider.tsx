@@ -48,7 +48,10 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const { data, isLoading, error, isFetching } = useQuery({
     queryKey: ["kanbanData", activeBoardId],
-    queryFn: async () => fetchBoardData(activeBoardId!),
+    queryFn: async () => {
+      console.log("fetching kanban data for board", activeBoardId);
+      return fetchBoardData(activeBoardId!);
+    },
     enabled: !!activeBoardId && activeBoardId !== "null",
   });
 
@@ -137,10 +140,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }
 
-  async function deleteTicket(
-    id: string, 
-  ) { 
-
+  async function deleteTicket(id: string) {
     setTickets((prev) => {
       const newTickets = prev.filter((ticket) => ticket.id !== id);
       return newTickets;
@@ -149,17 +149,17 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const { error, data } = await supabase
         .from("ticket")
-        .delete( )
-        .eq("id", id) 
+        .delete()
+        .eq("id", id);
       console.log("deleting ticket result", { error, data });
-      if (error  ) throw error || new Error("deleting failed"); 
+      if (error) throw error || new Error("deleting failed");
 
       // invalidate the query key
       await queryClient.invalidateQueries({
         queryKey: ["kanbanData", activeBoardId],
       });
     } catch (e) {
-      console.log("An error occured while deleting a ticket: ",id , e);
+      console.log("An error occured while deleting a ticket: ", id, e);
     }
   }
 
@@ -276,13 +276,19 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       channel.on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "ticket" },
-        (payload) => {
+        async (payload) => {
+          console.log("invalidating tickets from realtime insert");
+          // invalidate the query key
+          await queryClient.invalidateQueries({
+            queryKey: ["kanbanData", activeBoardId],
+          });
           const newTicket = payload.new as Tables<"ticket">;
           setTickets((prev) => {
             // check if it already exists
             if (prev.find((t) => t.id === newTicket.id)) return prev;
             return [...prev, newTicket];
           });
+
         }
       );
 
@@ -290,11 +296,16 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       channel.on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "ticket" },
-        (payload) => {
+        async (payload) => {
+          console.log("invalidating tickets from realtime update");
+          // invalidate the query key
+          await queryClient.invalidateQueries({
+            queryKey: ["kanbanData", activeBoardId],
+          });
           const updatedTicket = payload.new as Tables<"ticket">;
           setTickets((prev) =>
             prev.map((t) => (t.id === updatedTicket.id ? updatedTicket : t))
-          );
+          ); 
         }
       );
 
@@ -302,9 +313,14 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({
       channel.on(
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "ticket" },
-        (payload) => {
+        async (payload) => {
+          console.log("invalidating tickets from realtime delete");
+          // invalidate the query key
+          await queryClient.invalidateQueries({
+            queryKey: ["kanbanData", activeBoardId],
+          });
           const deletedId = (payload.old as Tables<"ticket">).id;
-          setTickets((prev) => prev.filter((t) => t.id !== deletedId));
+          setTickets((prev) => prev.filter((t) => t.id !== deletedId)); 
         }
       );
 
