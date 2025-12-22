@@ -10,7 +10,7 @@ export default function WorkspacesLayout({
     <AuthGuard>
       <div className="flex flex-col w-full h-screen  bg-slate-950 text-white">
         <Navbar />
-        {children}
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </AuthGuard>
   );
