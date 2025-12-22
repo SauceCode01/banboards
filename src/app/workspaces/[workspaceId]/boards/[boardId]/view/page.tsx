@@ -1,5 +1,6 @@
 "use client";
 import KanbanBoard from "@/components/kanban/Board";
+import BoardCollaborators from "@/components/boards/BoardCollaborators";
 import { useParams } from "next/navigation";
 import React from "react";
 
@@ -9,6 +10,7 @@ const BoardViewPage = () => {
   return (
     <div className="h-full w-full bg-slate-950">
       <KanbanBoard />
+      <BoardCollaborators />
     </div>
   );
 };
