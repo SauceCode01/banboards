@@ -140,19 +140,16 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const fetchBoards = async () => {
-      setBoardsState("loading");
-      dtoast("Fetching boards...");
+      setBoardsState("loading"); 
 
       const { data, error } = await supabase
         .from("board")
         .select("*")
         .eq("workspace_id", activeWorkspaceId);
 
-      if (error) {
-        dtoast(`Error fetching boards: ${error.message}`, "error");
+      if (error) { 
         setBoards([]);
-      } else if (data) {
-        dtoast(`Fetched ${data.length} boards`);
+      } else if (data) { 
         setBoards(data);
         // Automatically select the first board of the workspace
       }
@@ -178,8 +175,7 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
       .select()
       .single();
 
-    if (error || !newBoard) {
-      dtoast(`Error creating board: ${error?.message}`, "error");
+    if (error || !newBoard) { 
       setCreateBoardState("idle");
       return;
     }
@@ -196,13 +192,8 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
       .from("list")
       .insert(defaultLists);
 
-    if (listError) {
-      dtoast(
-        `Board created, but failed to create default lists: ${listError.message}`,
-        "error"
-      );
-    } else {
-      dtoast("Board and default lists created successfully");
+    if (listError) { 
+    } else { 
     }
 
     // Step C: Update application state: add the new board; lists are fetched per-board elsewhere
@@ -213,20 +204,17 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const deleteBoard = async (boardId: string) => {
-    setDeleteBoardState("loading");
-    dtoast("Deleting board...");
+    setDeleteBoardState("loading"); 
     const { error } = await supabase.from("board").delete().eq("id", boardId);
 
-    if (error) {
-      dtoast(`Error deleting board: ${error.message}`, "error");
+    if (error) { 
     } else {
       const remainingBoards = boards.filter((b) => b.id !== boardId);
       setBoards(remainingBoards);
       // If the deleted board was the active one, switch to the first available one
       if (activeBoardId === boardId) {
         setActiveBoardId(remainingBoards[0]?.id);
-      }
-      dtoast("Board deleted successfully");
+      } 
     }
     setDeleteBoardState("idle");
   };
@@ -236,8 +224,7 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
     newTitle: string,
     newDescription?: string
   ) => {
-    setUpdateBoardState("loading");
-    dtoast("Updating board...");
+    setUpdateBoardState("loading"); 
     const { data, error } = await supabase
       .from("board")
       .update({ title: newTitle, description: newDescription })
@@ -245,11 +232,9 @@ export const BoardProvider = ({ children }: { children: React.ReactNode }) => {
       .select()
       .single();
 
-    if (error || !data) {
-      dtoast(`Error updating board: ${error?.message}`, "error");
+    if (error || !data) { 
     } else {
-      setBoards((prev) => prev.map((b) => (b.id === boardId ? data : b)));
-      dtoast("Board updated successfully");
+      setBoards((prev) => prev.map((b) => (b.id === boardId ? data : b))); 
     }
     setUpdateBoardState("idle");
   };
