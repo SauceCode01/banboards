@@ -6,11 +6,14 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronsUpDown, Check, LayoutGrid, Plus, Loader2 } from "lucide-react";
+import { ChevronsUpDown, Check, LayoutGrid, Plus, Loader2, Settings, Users, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import Modal from "@/components/ui/Modal";
 import NewBoard from "@/components/boards/NewBoard";
+import WorkspaceSettings from "./WorkspaceSettings";
+import CollaboratorsModal from "./CollaboratorsModal";
+import BoardSettings from "../boards/BoardSettings";
 
 // Skeleton component for loading states
 const SkeletonItem = () => (
@@ -19,9 +22,12 @@ const SkeletonItem = () => (
 
 export default function WorkspaceSidebar() {
     const { workspaces, activeWorkspace, workspacesState } = useWorkspaceContext();
-    const { boards, activeBoardId, boardsState } = useBoardContext();
+    const { boards, activeBoardId, boardsState, setSelectedBoard, selectedBoard } = useBoardContext();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isNewBoardModalOpen, setIsNewBoardModalOpen] = useState(false);
+    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+    const [isCollaboratorsModalOpen, setIsCollaboratorsModalOpen] = useState(false);
+    const [isBoardSettingsModalOpen, setIsBoardSettingsModalOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
 
@@ -53,11 +59,17 @@ export default function WorkspaceSidebar() {
     const handleBoardSelect = (boardId: string) => {
         router.push(`/workspaces/${activeWorkspace?.id}/boards/${boardId}/view`);
     };
+
+    const openBoardSettings = (e: React.MouseEvent, board: any) => {
+        e.stopPropagation();
+        setSelectedBoard(board);
+        setIsBoardSettingsModalOpen(true);
+    }
     
     return (
         <aside className="w-64 min-w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between p-3">
             {/* Boards List */}
-            <div className="flex-grow">
+            <div className="grow">
                 <h2 className="text-xs font-semibold text-slate-400 px-2 mb-2">BOARDS</h2>
                 <div className="space-y-1">
                     {boardsState === 'loading' ? (
@@ -72,14 +84,20 @@ export default function WorkspaceSidebar() {
                                 key={board.id}
                                 onClick={() => handleBoardSelect(board.id)}
                                 className={cn(
-                                    "w-full flex items-center gap-2 p-2 rounded-md text-sm font-medium transition-colors text-left",
+                                    "w-full flex items-center justify-between gap-2 p-2 rounded-md text-sm font-medium transition-colors text-left group",
                                     activeBoardId === board.id
                                         ? "bg-indigo-600/20 text-indigo-300"
                                         : "text-slate-300 hover:bg-slate-800/50"
                                 )}
                             >
-                                <LayoutGrid className="w-4 h-4" />
-                                <span>{board.title}</span>
+                                <div className="flex items-center gap-2">
+                                    <LayoutGrid className="w-4 h-4" />
+                                    <span className="truncate">{board.title}</span>
+                                </div>
+                                <MoreHorizontal 
+                                    onClick={(e) => openBoardSettings(e, board)}
+                                    className="w-5 h-5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                />
                             </button>
                         ))
                     ) : (
@@ -96,56 +114,68 @@ export default function WorkspaceSidebar() {
             </div>
 
             {/* Workspace Selector */}
-            <div className="relative" ref={menuRef}>
-                <AnimatePresence>
-                    {isMenuOpen && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            transition={{ duration: 0.2, ease: "easeOut" }}
-                            className="absolute bottom-full left-0 right-0 mb-2 bg-slate-800 border border-slate-700 rounded-lg p-1 z-10"
-                        >
-                            <div className="flex flex-col space-y-1">
-                                {workspaces.map(workspace => (
-                                    <button
-                                        key={workspace.id}
-                                        onClick={() => handleWorkspaceSelect(workspace.id)}
-                                        className={cn(
-                                            "w-full text-left flex items-center justify-between p-2 rounded-md text-sm font-medium",
-                                            activeWorkspace?.id === workspace.id
-                                                ? "bg-slate-700/80 text-white"
-                                                : "text-slate-300 hover:bg-slate-700/50"
-                                        )}
-                                    >
-                                        <span>{workspace.title}</span>
-                                        {activeWorkspace?.id === workspace.id && <Check className="w-4 h-4" />}
-                                    </button>
-                                ))}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+            <div className="space-y-2">
+                <div className="flex items-center justify-around">
+                    <button onClick={() => setIsSettingsModalOpen(true)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white transition-colors p-1 rounded-md">
+                        <Settings className="w-3.5 h-3.5" />
+                        Settings
+                    </button>
+                    <button onClick={() => setIsCollaboratorsModalOpen(true)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white transition-colors p-1 rounded-md">
+                        <Users className="w-3.5 h-3.5" />
+                        Collaborators
+                    </button>
+                </div>
+                <div className="relative" ref={menuRef}>
+                    <AnimatePresence>
+                        {isMenuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                transition={{ duration: 0.2, ease: "easeOut" }}
+                                className="absolute bottom-full left-0 right-0 mb-2 bg-slate-800 border border-slate-700 rounded-lg p-1 z-10"
+                            >
+                                <div className="flex flex-col space-y-1">
+                                    {workspaces.map(workspace => (
+                                        <button
+                                            key={workspace.id}
+                                            onClick={() => handleWorkspaceSelect(workspace.id)}
+                                            className={cn(
+                                                "w-full text-left flex items-center justify-between p-2 rounded-md text-sm font-medium",
+                                                activeWorkspace?.id === workspace.id
+                                                    ? "bg-slate-700/80 text-white"
+                                                    : "text-slate-300 hover:bg-slate-700/50"
+                                            )}
+                                        >
+                                            <span>{workspace.title}</span>
+                                            {activeWorkspace?.id === workspace.id && <Check className="w-4 h-4" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
-                <button
-                    onClick={() => setIsMenuOpen(prev => !prev)}
-                    className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
-                >
-                    {workspacesState === 'loading' ? (
-                        <div className="flex items-center gap-2">
-                             <Loader2 className="w-4 h-4 animate-spin"/>
-                             <span className="text-sm font-medium text-slate-400">Loading...</span>
-                        </div>
-                    ) : activeWorkspace ? (
-                        <div className="flex items-center gap-2 overflow-hidden">
-                            <div className="w-6 h-6 rounded-md bg-indigo-600 shrink-0"></div>
-                            <span className="text-sm font-semibold text-white truncate">{activeWorkspace.title}</span>
-                        </div>
-                    ) : (
-                         <span className="text-sm font-medium text-slate-400">No workspace</span>
-                    )}
-                    <ChevronsUpDown className="w-4 h-4 text-slate-400 shrink-0" />
-                </button>
+                    <button
+                        onClick={() => setIsMenuOpen(prev => !prev)}
+                        className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
+                    >
+                        {workspacesState === 'loading' ? (
+                            <div className="flex items-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin"/>
+                                <span className="text-sm font-medium text-slate-400">Loading...</span>
+                            </div>
+                        ) : activeWorkspace ? (
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                <div className="w-6 h-6 rounded-md bg-indigo-600 shrink-0"></div>
+                                <span className="text-sm font-semibold text-white truncate">{activeWorkspace.title}</span>
+                            </div>
+                        ) : (
+                            <span className="text-sm font-medium text-slate-400">No workspace</span>
+                        )}
+                        <ChevronsUpDown className="w-4 h-4 text-slate-400 shrink-0" />
+                    </button>
+                </div>
             </div>
 
             <Modal
@@ -154,6 +184,20 @@ export default function WorkspaceSidebar() {
                 title="Create New Board"
             >
                 <NewBoard onClose={() => setIsNewBoardModalOpen(false)} />
+            </Modal>
+
+            {activeWorkspace && (
+                <>
+                    <Modal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} title="Workspace Settings">
+                        <WorkspaceSettings workspace={activeWorkspace} onClose={() => setIsSettingsModalOpen(false)} />
+                    </Modal>
+                    <Modal isOpen={isCollaboratorsModalOpen} onClose={() => setIsCollaboratorsModalOpen(false)} title="Manage Collaborators">
+                        <CollaboratorsModal workspaceId={activeWorkspace.id} />
+                    </Modal>
+                </>
+            )}
+             <Modal isOpen={isBoardSettingsModalOpen} onClose={() => setIsBoardSettingsModalOpen(false)} title="Board Settings">
+                {selectedBoard && <BoardSettings board={selectedBoard} onClose={() => setIsBoardSettingsModalOpen(false)} />}
             </Modal>
         </aside>
     );
