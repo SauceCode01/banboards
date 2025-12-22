@@ -38,7 +38,7 @@ export const BoardList: React.FC<BoardListProps> = ({
       </div>
       <div
         ref={setNodeRef}
-        className={` flex-1 overflow-y-auto border border-t-0 border-slate-700 p-3 space-y-2 ${
+        className={` flex-1 overflow-y-auto scrollbar-brand border border-t-0 border-slate-700 p-3 space-y-2 ${
           isOver ? "bg-slate-800/40" : "bg-slate-900/40"
         }`}
       >
